@@ -186,6 +186,10 @@ export function useTopupInfo() {
         ),
         amount_options: parseAmountOptions(response.data.amount_options),
         discount: parseDiscountMap(response.data.discount),
+        payment_notice:
+          typeof response.data.payment_notice === 'string'
+            ? response.data.payment_notice
+            : '',
         creem_products: parseCreemProducts(response.data.creem_products),
         waffo_pay_methods: parseWaffoPayMethods(
           response.data.waffo_pay_methods

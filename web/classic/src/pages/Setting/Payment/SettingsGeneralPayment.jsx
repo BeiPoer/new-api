@@ -39,6 +39,7 @@ export default function SettingsGeneralPayment(props) {
     PayMethods: '',
     AmountOptions: '',
     AmountDiscount: '',
+    PaymentNotice: '',
   });
   const [originInputs, setOriginInputs] = useState({});
   const formApiRef = useRef(null);
@@ -52,6 +53,7 @@ export default function SettingsGeneralPayment(props) {
         PayMethods: props.options.PayMethods || '',
         AmountOptions: props.options.AmountOptions || '',
         AmountDiscount: props.options.AmountDiscount || '',
+        PaymentNotice: props.options.PaymentNotice || '',
       };
       setInputs(currentInputs);
       setOriginInputs({ ...currentInputs });
@@ -129,6 +131,12 @@ export default function SettingsGeneralPayment(props) {
         options.push({
           key: 'payment_setting.amount_discount',
           value: inputs.AmountDiscount,
+        });
+      }
+      if (originInputs.PaymentNotice !== inputs.PaymentNotice) {
+        options.push({
+          key: 'payment_setting.payment_notice',
+          value: (inputs.PaymentNotice || '').trim(),
         });
       }
 
@@ -235,6 +243,17 @@ export default function SettingsGeneralPayment(props) {
                 extraText={t(
                   '设置不同充值金额对应的折扣，键为充值金额，值为折扣率，例如：{"100": 0.95, "200": 0.9, "500": 0.85}',
                 )}
+              />
+            </Col>
+          </Row>
+          <Row style={{ marginTop: 16 }}>
+            <Col span={24}>
+              <Form.TextArea
+                field='PaymentNotice'
+                label={t('支付提示')}
+                placeholder={t('留空则不在钱包页显示支付提示')}
+                autosize
+                extraText={t('设置后会显示在钱包管理的账户统计下方')}
               />
             </Col>
           </Row>

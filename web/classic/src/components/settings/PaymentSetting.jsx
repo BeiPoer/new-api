@@ -55,6 +55,7 @@ const PaymentSetting = () => {
     PayMethods: '',
     AmountOptions: '',
     AmountDiscount: '',
+    PaymentNotice: '',
 
     StripeApiSecret: '',
     StripeWebhookSecret: '',
@@ -166,6 +167,9 @@ const PaymentSetting = () => {
             } catch (error) {
               newInputs['AmountDiscount'] = item.value;
             }
+            break;
+          case 'payment_setting.payment_notice':
+            newInputs['PaymentNotice'] = item.value;
             break;
           case 'payment_setting.compliance_confirmed':
             newInputs[item.key] = toBoolean(item.value);

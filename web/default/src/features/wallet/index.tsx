@@ -16,12 +16,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getSelf } from '@/lib/api'
 import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { SectionPageLayout } from '@/components/layout'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AffiliateRewardsCard } from './components/affiliate-rewards-card'
 import { BillingHistoryDialog } from './components/dialogs/billing-history-dialog'
 import { CreemConfirmDialog } from './components/dialogs/creem-confirm-dialog'
@@ -56,6 +57,86 @@ interface WalletProps {
   initialShowHistory?: boolean
 }
 
+const PAYMENT_NOTICE_LINK_PATTERN =
+  /<a\s+[^>]*href\s*=\s*(["'])(https?:\/\/.*?)\1[^>]*>([\s\S]*?)<\/a>/gi
+
+function decodeBasicHtmlEntities(value: string) {
+  return value
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) =>
+      String.fromCharCode(Number.parseInt(code, 16))
+    )
+    .replace(/&#(\d+);/g, (_, code) =>
+      String.fromCharCode(Number.parseInt(code, 10))
+    )
+    .replace(/&(amp|lt|gt|quot|apos|#39);/g, (entity) => {
+      const entities: Record<string, string> = {
+        '&amp;': '&',
+        '&lt;': '<',
+        '&gt;': '>',
+        '&quot;': '"',
+        '&apos;': "'",
+        '&#39;': "'",
+      }
+      return entities[entity] ?? entity
+    })
+}
+
+function getSafePaymentNoticeUrl(href: string) {
+  try {
+    const url = new URL(href)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+      ? url.toString()
+      : null
+  } catch {
+    return null
+  }
+}
+
+function renderPaymentNoticeContent(paymentNotice: string): ReactNode[] {
+  const nodes: ReactNode[] = []
+  let lastIndex = 0
+  let linkIndex = 0
+
+  PAYMENT_NOTICE_LINK_PATTERN.lastIndex = 0
+  paymentNotice.replace(
+    PAYMENT_NOTICE_LINK_PATTERN,
+    (match, _quote: string, href: string, label: string, offset: number) => {
+      if (offset > lastIndex) {
+        nodes.push(paymentNotice.slice(lastIndex, offset))
+      }
+
+      const safeHref = getSafePaymentNoticeUrl(decodeBasicHtmlEntities(href))
+      if (safeHref) {
+        const text =
+          decodeBasicHtmlEntities(label.replace(/<[^>]*>/g, '')).trim() ||
+          safeHref
+        nodes.push(
+          <a
+            key={`payment-notice-link-${linkIndex++}`}
+            href={safeHref}
+            target='_blank'
+            rel='noopener noreferrer'
+            className='font-medium text-yellow-900 underline decoration-yellow-700 underline-offset-2 hover:text-yellow-700 dark:text-yellow-100 dark:decoration-yellow-300 dark:hover:text-yellow-200'
+          >
+            {text}
+          </a>
+        )
+      } else {
+        nodes.push(match)
+      }
+
+      lastIndex = offset + match.length
+      return match
+    }
+  )
+
+  if (lastIndex < paymentNotice.length) {
+    nodes.push(paymentNotice.slice(lastIndex))
+  }
+
+  return nodes
+}
+
 export function Wallet(props: WalletProps) {
   const { t } = useTranslation()
   const [user, setUser] = useState<UserWalletData | null>(null)
@@ -77,6 +158,8 @@ export function Wallet(props: WalletProps) {
   const { status } = useStatus()
   const { currency } = useSystemConfig()
   const { topupInfo, presetAmounts, loading: topupLoading } = useTopupInfo()
+  const paymentNotice = topupInfo?.payment_notice ?? ''
+  const shouldShowPaymentNotice = paymentNotice.trim().length > 0
 
   // Calculate effective exchange rate - when display type is USD, use rate of 1
   const effectiveUsdExchangeRate = useMemo(() => {
@@ -267,6 +350,14 @@ export function Wallet(props: WalletProps) {
         <SectionPageLayout.Content>
           <div className='mx-auto flex w-full max-w-7xl flex-col gap-4 sm:gap-5'>
             <WalletStatsCard user={user} loading={userLoading} />
+
+            {shouldShowPaymentNotice ? (
+              <Alert className='border-yellow-200 bg-yellow-50 text-yellow-950 dark:border-yellow-900/60 dark:bg-yellow-950/30 dark:text-yellow-100'>
+                <AlertDescription className='whitespace-pre-wrap break-words text-yellow-900 dark:text-yellow-100'>
+                  {renderPaymentNoticeContent(paymentNotice)}
+                </AlertDescription>
+              </Alert>
+            ) : null}
 
             <div
               className={
