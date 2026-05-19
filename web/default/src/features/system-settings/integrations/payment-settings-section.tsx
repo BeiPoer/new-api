@@ -114,6 +114,7 @@ const paymentSchema = z.object({
       })
     }
   }),
+  PaymentNotice: z.string(),
   StripeApiSecret: z.string(),
   StripeWebhookSecret: z.string(),
   StripePriceId: z.string(),
@@ -282,6 +283,7 @@ export function PaymentSettingsSection({
       PayMethods: values.PayMethods.trim(),
       AmountOptions: values.AmountOptions.trim(),
       AmountDiscount: values.AmountDiscount.trim(),
+      PaymentNotice: values.PaymentNotice.trim(),
     }
 
     const initial = {
@@ -290,6 +292,7 @@ export function PaymentSettingsSection({
       PayMethods: initialRef.current.PayMethods.trim(),
       AmountOptions: initialRef.current.AmountOptions.trim(),
       AmountDiscount: initialRef.current.AmountDiscount.trim(),
+      PaymentNotice: initialRef.current.PaymentNotice.trim(),
     }
 
     const updates: Array<{ key: string; value: string | number }> = []
@@ -326,6 +329,13 @@ export function PaymentSettingsSection({
       updates.push({
         key: 'payment_setting.amount_discount',
         value: sanitized.AmountDiscount,
+      })
+    }
+
+    if (sanitized.PaymentNotice !== initial.PaymentNotice) {
+      updates.push({
+        key: 'payment_setting.payment_notice',
+        value: sanitized.PaymentNotice,
       })
     }
 
@@ -524,6 +534,7 @@ export function PaymentSettingsSection({
       PayMethods: values.PayMethods.trim(),
       AmountOptions: values.AmountOptions.trim(),
       AmountDiscount: values.AmountDiscount.trim(),
+      PaymentNotice: values.PaymentNotice.trim(),
       StripeApiSecret: values.StripeApiSecret.trim(),
       StripeWebhookSecret: values.StripeWebhookSecret.trim(),
       StripePriceId: values.StripePriceId.trim(),
@@ -544,6 +555,7 @@ export function PaymentSettingsSection({
       PayMethods: initialRef.current.PayMethods.trim(),
       AmountOptions: initialRef.current.AmountOptions.trim(),
       AmountDiscount: initialRef.current.AmountDiscount.trim(),
+      PaymentNotice: initialRef.current.PaymentNotice.trim(),
       StripeApiSecret: initialRef.current.StripeApiSecret.trim(),
       StripeWebhookSecret: initialRef.current.StripeWebhookSecret.trim(),
       StripePriceId: initialRef.current.StripePriceId.trim(),
@@ -606,6 +618,13 @@ export function PaymentSettingsSection({
       updates.push({
         key: 'payment_setting.amount_discount',
         value: sanitized.AmountDiscount,
+      })
+    }
+
+    if (sanitized.PaymentNotice !== initial.PaymentNotice) {
+      updates.push({
+        key: 'payment_setting.payment_notice',
+        value: sanitized.PaymentNotice,
       })
     }
 
@@ -960,6 +979,30 @@ export function PaymentSettingsSection({
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name='PaymentNotice'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Payment notice')}</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      rows={3}
+                      placeholder={t('Optional payment notice shown to users')}
+                      {...field}
+                      onChange={(event) => field.onChange(event.target.value)}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t(
+                      'Shown below account statistics on the wallet page when set'
+                    )}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <Button
               type='button'

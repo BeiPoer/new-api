@@ -52,6 +52,91 @@ import SubscriptionPlansCard from './SubscriptionPlansCard';
 
 const { Text } = Typography;
 
+const PAYMENT_NOTICE_LINK_PATTERN =
+  /<a\s+[^>]*href\s*=\s*(["'])(https?:\/\/.*?)\1[^>]*>([\s\S]*?)<\/a>/gi;
+
+function decodeBasicHtmlEntities(value) {
+  return value
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) =>
+      String.fromCharCode(Number.parseInt(code, 16)),
+    )
+    .replace(/&#(\d+);/g, (_, code) =>
+      String.fromCharCode(Number.parseInt(code, 10)),
+    )
+    .replace(/&(amp|lt|gt|quot|apos|#39);/g, (entity) => {
+      const entities = {
+        '&amp;': '&',
+        '&lt;': '<',
+        '&gt;': '>',
+        '&quot;': '"',
+        '&apos;': "'",
+        '&#39;': "'",
+      };
+      return entities[entity] ?? entity;
+    });
+}
+
+function getSafePaymentNoticeUrl(href) {
+  try {
+    const url = new URL(href);
+    return url.protocol === 'http:' || url.protocol === 'https:'
+      ? url.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function renderPaymentNoticeContent(paymentNotice) {
+  const nodes = [];
+  let lastIndex = 0;
+  let linkIndex = 0;
+
+  PAYMENT_NOTICE_LINK_PATTERN.lastIndex = 0;
+  paymentNotice.replace(
+    PAYMENT_NOTICE_LINK_PATTERN,
+    (match, _quote, href, label, offset) => {
+      if (offset > lastIndex) {
+        nodes.push(paymentNotice.slice(lastIndex, offset));
+      }
+
+      const safeHref = getSafePaymentNoticeUrl(decodeBasicHtmlEntities(href));
+      if (safeHref) {
+        const text =
+          decodeBasicHtmlEntities(label.replace(/<[^>]*>/g, '')).trim() ||
+          safeHref;
+        nodes.push(
+          <a
+            key={`payment-notice-link-${linkIndex++}`}
+            href={safeHref}
+            target='_blank'
+            rel='noopener noreferrer'
+            style={{
+              color: 'var(--semi-color-warning)',
+              fontWeight: 600,
+              textDecoration: 'underline',
+              textUnderlineOffset: 2,
+            }}
+          >
+            {text}
+          </a>,
+        );
+      } else {
+        nodes.push(match);
+      }
+
+      lastIndex = offset + match.length;
+      return match;
+    },
+  );
+
+  if (lastIndex < paymentNotice.length) {
+    nodes.push(paymentNotice.slice(lastIndex));
+  }
+
+  return nodes;
+}
+
 const RechargeCard = ({
   t,
   enableOnlineTopUp,
@@ -99,6 +184,7 @@ const RechargeCard = ({
   allSubscriptions = [],
   reloadSubscriptionSelf,
   enableRedemption = true,
+  paymentNotice = '',
 }) => {
   const onlineFormApiRef = useRef(null);
   const redeemFormApiRef = useRef(null);
@@ -108,6 +194,8 @@ const RechargeCard = ({
   const shouldShowSubscription =
     !subscriptionLoading && subscriptionPlans.length > 0;
   const regularPayMethods = payMethods || [];
+  const shouldShowPaymentNotice =
+    typeof paymentNotice === 'string' && paymentNotice.trim().length > 0;
 
   useEffect(() => {
     if (initialTabSetRef.current) return;
@@ -225,6 +313,20 @@ const RechargeCard = ({
           </div>
         }
       >
+        {shouldShowPaymentNotice ? (
+          <Banner
+            type='warning'
+            description={
+              <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                {renderPaymentNoticeContent(paymentNotice)}
+              </div>
+            }
+            closeIcon={null}
+            className='!rounded-xl'
+            style={{ marginBottom: 16 }}
+          />
+        ) : null}
+
         {/* 在线充值表单 */}
         {statusLoading ? (
           <div className='py-8 flex justify-center'>

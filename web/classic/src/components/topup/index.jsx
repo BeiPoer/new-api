@@ -115,6 +115,7 @@ const TopUp = () => {
     amount_options: [],
     discount: {},
     enable_redemption: true,
+    payment_notice: '',
     payment_compliance_confirmed: true,
   });
 
@@ -628,6 +629,13 @@ const TopUp = () => {
         setTopupInfo({
           amount_options: data.amount_options || [],
           discount: data.discount || {},
+          enable_redemption: data.enable_redemption !== false,
+          payment_notice:
+            typeof data.payment_notice === 'string' ? data.payment_notice : '',
+          payment_compliance_confirmed:
+            data.payment_compliance_confirmed !== false,
+          payment_compliance_terms_version:
+            data.payment_compliance_terms_version || '',
         });
 
         // 处理支付方式
@@ -756,6 +764,10 @@ const TopUp = () => {
           setTopupInfo((prev) => ({
             ...prev,
             enable_redemption: data.enable_redemption !== false,
+            payment_notice:
+              typeof data.payment_notice === 'string'
+                ? data.payment_notice
+                : '',
             payment_compliance_confirmed:
               data.payment_compliance_confirmed !== false,
             payment_compliance_terms_version:
@@ -1143,6 +1155,7 @@ const TopUp = () => {
           allSubscriptions={allSubscriptions}
           reloadSubscriptionSelf={getSubscriptionSelf}
           enableRedemption={topupInfo.enable_redemption !== false}
+          paymentNotice={topupInfo.payment_notice}
         />
         <InvitationCard
           t={t}
