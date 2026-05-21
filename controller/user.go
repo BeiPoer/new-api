@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -29,6 +30,8 @@ type LoginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
+
+var phoneNumberRegex = regexp.MustCompile(`^1[3-9]\d{9}$`)
 
 func Login(c *gin.Context) {
 	if !common.PasswordLoginEnabled {
@@ -145,9 +148,18 @@ func Register(c *gin.Context) {
 		return
 	}
 	var user model.User
-	err := json.NewDecoder(c.Request.Body).Decode(&user)
+	err := common.DecodeJson(c.Request.Body, &user)
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		return
+	}
+	user.Phone = strings.TrimSpace(user.Phone)
+	if user.Phone == "" {
+		common.ApiErrorI18n(c, i18n.MsgUserPhoneRequired)
+		return
+	}
+	if !phoneNumberRegex.MatchString(user.Phone) {
+		common.ApiErrorI18n(c, i18n.MsgUserPhoneInvalid)
 		return
 	}
 	if err := common.Validate.Struct(&user); err != nil {
@@ -180,6 +192,7 @@ func Register(c *gin.Context) {
 		Username:    user.Username,
 		Password:    user.Password,
 		DisplayName: user.Username,
+		Phone:       user.Phone,
 		InviterId:   inviterId,
 		Role:        common.RoleCommonUser, // 明确设置角色为普通用户
 	}

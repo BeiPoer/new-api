@@ -91,6 +91,7 @@ export function SignUpForm({
     resolver: zodResolver(registerFormSchema),
     defaultValues: {
       username: '',
+      phone: '',
       email: '',
       password: '',
       confirmPassword: '',
@@ -153,6 +154,7 @@ export function SignUpForm({
       const res = await register({
         username: data.username,
         password: data.password,
+        phone: data.phone,
         email: data.email || undefined,
         verification_code: verificationCode || undefined,
         aff: getAffiliateCode(),
@@ -230,6 +232,28 @@ export function SignUpForm({
               <FormLabel>{t('Username')}</FormLabel>
               <FormControl>
                 <Input placeholder={t('Enter your username')} {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Phone Field */}
+        <FormField
+          control={form.control}
+          name='phone'
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('Phone number')}</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder={t('Enter your phone number')}
+                  type='tel'
+                  autoComplete='tel'
+                  inputMode='numeric'
+                  maxLength={11}
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

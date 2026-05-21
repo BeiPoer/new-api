@@ -22,6 +22,8 @@ import { z } from 'zod'
 // Form Schemas
 // ============================================================================
 
+export const PHONE_NUMBER_REGEX = /^1[3-9]\d{9}$/
+
 export const loginFormSchema = z.object({
   username: z.string().min(1, 'Please enter your username or email'),
   password: z
@@ -33,6 +35,11 @@ export const loginFormSchema = z.object({
 export const registerFormSchema = z
   .object({
     username: z.string().min(1, 'Please enter your username'),
+    phone: z
+      .string()
+      .trim()
+      .min(1, 'Please enter your phone number')
+      .regex(PHONE_NUMBER_REGEX, 'Please enter a valid phone number'),
     email: z.string().optional(),
     password: z
       .string()

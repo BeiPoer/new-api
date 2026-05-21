@@ -65,6 +65,8 @@ import { StatusContext } from '../../context/Status';
 import { useTranslation } from 'react-i18next';
 import { SiDiscord } from 'react-icons/si';
 
+const PHONE_NUMBER_REGEX = /^1[3-9]\d{9}$/;
+
 const RegisterForm = () => {
   let navigate = useNavigate();
   const { t } = useTranslation();
@@ -75,13 +77,14 @@ const RegisterForm = () => {
   };
   const [inputs, setInputs] = useState({
     username: '',
+    phone: '',
     password: '',
     password2: '',
     email: '',
     verification_code: '',
     wechat_verification_code: '',
   });
-  const { username, password, password2 } = inputs;
+  const { username, phone, password, password2 } = inputs;
   const [userState, userDispatch] = useContext(UserContext);
   const [statusState] = useContext(StatusContext);
   const [turnstileEnabled, setTurnstileEnabled] = useState(false);
@@ -216,6 +219,15 @@ const RegisterForm = () => {
   }
 
   async function handleSubmit(e) {
+    const trimmedPhone = (phone || '').trim();
+    if (!trimmedPhone) {
+      showInfo(t('请输入手机号'));
+      return;
+    }
+    if (!PHONE_NUMBER_REGEX.test(trimmedPhone)) {
+      showInfo(t('请输入有效的手机号'));
+      return;
+    }
     if (password.length < 8) {
       showInfo('密码长度不得小于 8 位！');
       return;
@@ -234,10 +246,10 @@ const RegisterForm = () => {
         if (!affCode) {
           affCode = localStorage.getItem('aff');
         }
-        inputs.aff_code = affCode;
+        const payload = { ...inputs, phone: trimmedPhone, aff_code: affCode };
         const res = await API.post(
           `/api/user/register?turnstile=${turnstileToken}`,
-          inputs,
+          payload,
         );
         const { success, message } = res.data;
         if (success) {
@@ -579,6 +591,17 @@ const RegisterForm = () => {
                   placeholder={t('请输入用户名')}
                   name='username'
                   onChange={(value) => handleChange('username', value)}
+                  prefix={<IconUser />}
+                />
+
+                <Form.Input
+                  field='phone'
+                  label={t('手机号')}
+                  placeholder={t('请输入手机号')}
+                  name='phone'
+                  type='tel'
+                  maxLength={11}
+                  onChange={(value) => handleChange('phone', value)}
                   prefix={<IconUser />}
                 />
 

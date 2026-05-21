@@ -30,6 +30,7 @@ type User struct {
 	Role             int            `json:"role" gorm:"type:int;default:1"`   // admin, common
 	Status           int            `json:"status" gorm:"type:int;default:1"` // enabled, disabled
 	Email            string         `json:"email" gorm:"index" validate:"max=50"`
+	Phone            string         `json:"phone" gorm:"type:varchar(20);index" validate:"max=20"`
 	GitHubId         string         `json:"github_id" gorm:"column:github_id;index"`
 	DiscordId        string         `json:"discord_id" gorm:"column:discord_id;index"`
 	OidcId           string         `json:"oidc_id" gorm:"column:oidc_id;index"`
@@ -246,7 +247,7 @@ func SearchUsers(keyword string, group string, startIdx int, num int) ([]*User, 
 	query := tx.Unscoped().Model(&User{})
 
 	// 构建搜索条件
-	likeCondition := "username LIKE ? OR email LIKE ? OR display_name LIKE ?"
+	likeCondition := "username LIKE ? OR email LIKE ? OR phone LIKE ? OR display_name LIKE ?"
 
 	// 尝试将关键字转换为整数ID
 	keywordInt, err := strconv.Atoi(keyword)
@@ -255,19 +256,19 @@ func SearchUsers(keyword string, group string, startIdx int, num int) ([]*User, 
 		likeCondition = "id = ? OR " + likeCondition
 		if group != "" {
 			query = query.Where("("+likeCondition+") AND "+commonGroupCol+" = ?",
-				keywordInt, "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%", group)
+				keywordInt, "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%", group)
 		} else {
 			query = query.Where(likeCondition,
-				keywordInt, "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
+				keywordInt, "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
 		}
 	} else {
 		// 非数字关键字，只搜索字符串字段
 		if group != "" {
 			query = query.Where("("+likeCondition+") AND "+commonGroupCol+" = ?",
-				"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%", group)
+				"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%", group)
 		} else {
 			query = query.Where(likeCondition,
-				"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
+				"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
 		}
 	}
 

@@ -118,6 +118,21 @@ export function useUsersColumns(): ColumnDef<User>[] {
       meta: { label: t('Username'), mobileTitle: true },
     },
     {
+      accessorKey: 'phone',
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t('Phone number')} />
+      ),
+      cell: ({ row }) => {
+        const phone = row.original.phone
+        return (
+          <LongText className='text-muted-foreground max-w-[120px] text-sm'>
+            {phone || '-'}
+          </LongText>
+        )
+      },
+      meta: { label: t('Phone number') },
+    },
+    {
       accessorKey: 'status',
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('Status')} />
