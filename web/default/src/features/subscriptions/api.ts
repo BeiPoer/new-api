@@ -132,6 +132,16 @@ export async function paySubscriptionEpay(
   }
 }
 
+export async function paySubscriptionAlipay(
+  data: SubscriptionPayRequest
+): Promise<SubscriptionPayResponse & { url?: string }> {
+  const res = await api.post('/api/subscription/alipay/pay', data)
+  return {
+    ...res.data,
+    url: res.data.url || (res as unknown as { url?: string }).url,
+  }
+}
+
 // ============================================================================
 // User Self Subscriptions
 // ============================================================================

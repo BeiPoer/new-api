@@ -4464,6 +4464,10 @@
     "operation and charging behavior": "operation and charging behavior",
     "，": ", ",
     "，and ": ", and ",
-    "、": ", "
+    "、": ", ",
+    "After payment succeeds, you can refresh billing history": "После успешной оплаты можно обновить историю платежей",
+    "Scan the QR code to complete payment": "Отсканируйте QR-код, чтобы завершить оплату",
+    "Scan with Alipay": "Сканировать через Alipay",
+    "Use Alipay to scan the QR code and complete payment": "Отсканируйте QR-код в Alipay, чтобы завершить оплату"
   }
 }

@@ -93,11 +93,13 @@ export interface SubscriptionPayRequest {
 export interface SubscriptionPayResponse {
   success: boolean
   message?: string
-  data?: {
+  data?: Record<string, unknown> & {
     pay_link?: string
     checkout_url?: string
   }
   url?: string
+  pay_mode?: 'qrcode' | 'page_pay'
+  qr_code?: string
 }
 
 export interface CreateUserSubscriptionRequest {

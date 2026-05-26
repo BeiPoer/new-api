@@ -30,6 +30,7 @@ import {
   Tooltip,
   Typography,
 } from '@douyinfe/semi-ui';
+import { QRCodeSVG } from 'qrcode.react';
 import { API, showError, showSuccess, renderQuota } from '../../helpers';
 import { getCurrencyConfig } from '../../helpers/render';
 import { RefreshCw, Sparkles } from 'lucide-react';
@@ -101,6 +102,7 @@ const SubscriptionPlansCard = ({
   const [paying, setPaying] = useState(false);
   const [selectedEpayMethod, setSelectedEpayMethod] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [alipayQrCode, setAlipayQrCode] = useState('');
 
   const epayMethods = useMemo(() => getEpayMethods(payMethods), [payMethods]);
   const enterpriseAlipayMethod = useMemo(
@@ -221,8 +223,13 @@ const SubscriptionPlansCard = ({
         plan_id: selectedPlan.plan.id,
       });
       if (res.data?.message === 'success') {
-        submitEpayForm({ url: res.data.url, params: res.data.data });
-        showSuccess(t('已发起支付'));
+        if (res.data?.pay_mode === 'qrcode' && res.data?.qr_code) {
+          setAlipayQrCode(res.data.qr_code);
+          showSuccess(t('请使用支付宝扫码完成支付'));
+        } else {
+          submitEpayForm({ url: res.data.url, params: res.data.data });
+          showSuccess(t('已发起支付'));
+        }
         closeBuy();
       } else {
         const errorMsg =
@@ -728,6 +735,37 @@ const SubscriptionPlansCard = ({
         onPayEpay={payEpay}
         onPayEnterpriseAlipay={payEnterpriseAlipay}
       />
+      <Modal
+        title={t('请使用支付宝扫码支付')}
+        visible={!!alipayQrCode}
+        onCancel={() => setAlipayQrCode('')}
+        footer={
+          <div className='flex justify-end gap-2'>
+            <Button theme='borderless' onClick={() => setAlipayQrCode('')}>
+              {t('关闭')}
+            </Button>
+            <Button
+              theme='solid'
+              onClick={() => {
+                setAlipayQrCode('');
+                handleRefresh();
+              }}
+            >
+              {t('刷新订阅')}
+            </Button>
+          </div>
+        }
+        centered
+      >
+        <div className='flex flex-col items-center gap-3 py-2'>
+          <div className='rounded-lg border bg-white p-4'>
+            {alipayQrCode ? <QRCodeSVG value={alipayQrCode} size={220} /> : null}
+          </div>
+          <p className='text-center text-sm text-gray-500'>
+            {t('支付成功后可刷新订阅状态')}
+          </p>
+        </div>
+      </Modal>
     </>
   );
 };

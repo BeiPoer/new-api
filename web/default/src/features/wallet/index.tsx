@@ -24,6 +24,7 @@ import { useSystemConfig } from '@/hooks/use-system-config'
 import { SectionPageLayout } from '@/components/layout'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AffiliateRewardsCard } from './components/affiliate-rewards-card'
+import { AlipayQRCodeDialog } from './components/dialogs/alipay-qr-code-dialog'
 import { BillingHistoryDialog } from './components/dialogs/billing-history-dialog'
 import { CreemConfirmDialog } from './components/dialogs/creem-confirm-dialog'
 import { PaymentConfirmDialog } from './components/dialogs/payment-confirm-dialog'
@@ -171,8 +172,10 @@ export function Wallet(props: WalletProps) {
     amount: paymentAmount,
     calculating,
     processing,
+    alipayQRCodePayment,
     calculatePaymentAmount,
     processPayment,
+    closeAlipayQRCodePayment,
   } = usePayment()
   const {
     affiliateLink,
@@ -185,6 +188,7 @@ export function Wallet(props: WalletProps) {
   const { processWaffoPayment } = useWaffoPayment()
   const { processing: pancakeProcessing, processWaffoPancakePayment } =
     useWaffoPancakePayment()
+  const shouldUseAlipayDirectCNY = !!topupInfo?.enable_alipay_direct_cny
 
   // Fetch and refresh user data
   const fetchUser = useCallback(async () => {
@@ -221,9 +225,13 @@ export function Wallet(props: WalletProps) {
 
       // Calculate initial payment amount with default payment type
       const defaultPaymentType = getDefaultPaymentType(topupInfo)
-      calculatePaymentAmount(minTopup, defaultPaymentType)
+      calculatePaymentAmount(
+        minTopup,
+        defaultPaymentType,
+        defaultPaymentType === 'enterprise_alipay' && shouldUseAlipayDirectCNY
+      )
     }
-  }, [topupInfo, topupAmount, calculatePaymentAmount])
+  }, [topupInfo, topupAmount, calculatePaymentAmount, shouldUseAlipayDirectCNY])
 
   // Get current payment type (selected or default)
   const getCurrentPaymentType = useCallback(() => {
@@ -234,14 +242,24 @@ export function Wallet(props: WalletProps) {
   const handleSelectPreset = (preset: PresetAmount) => {
     setTopupAmount(preset.value)
     setSelectedPreset(preset.value)
-    calculatePaymentAmount(preset.value, getCurrentPaymentType())
+    const paymentType = getCurrentPaymentType()
+    calculatePaymentAmount(
+      preset.value,
+      paymentType,
+      paymentType === 'enterprise_alipay' && shouldUseAlipayDirectCNY
+    )
   }
 
   // Handle topup amount change
   const handleTopupAmountChange = (amount: number) => {
     setTopupAmount(amount)
     setSelectedPreset(null)
-    calculatePaymentAmount(amount, getCurrentPaymentType())
+    const paymentType = getCurrentPaymentType()
+    calculatePaymentAmount(
+      amount,
+      paymentType,
+      paymentType === 'enterprise_alipay' && shouldUseAlipayDirectCNY
+    )
   }
 
   // Handle payment method selection
@@ -257,7 +275,11 @@ export function Wallet(props: WalletProps) {
       }
 
       // Calculate payment amount and show confirmation dialog
-      await calculatePaymentAmount(topupAmount, method.type)
+      await calculatePaymentAmount(
+        topupAmount,
+        method.type,
+        method.type === 'enterprise_alipay' && shouldUseAlipayDirectCNY
+      )
       setConfirmDialogOpen(true)
     } finally {
       setPaymentLoading(null)
@@ -271,7 +293,12 @@ export function Wallet(props: WalletProps) {
     const isPancake = isWaffoPancakePayment(selectedPaymentMethod.type)
     const success = isPancake
       ? await processWaffoPancakePayment(topupAmount)
-      : await processPayment(topupAmount, selectedPaymentMethod.type)
+      : await processPayment(
+          topupAmount,
+          selectedPaymentMethod.type,
+          selectedPaymentMethod.type === 'enterprise_alipay' &&
+            shouldUseAlipayDirectCNY
+        )
 
     if (success) {
       setConfirmDialogOpen(false)
@@ -443,6 +470,17 @@ export function Wallet(props: WalletProps) {
       <BillingHistoryDialog
         open={billingDialogOpen}
         onOpenChange={setBillingDialogOpen}
+      />
+
+      <AlipayQRCodeDialog
+        open={!!alipayQRCodePayment}
+        qrCode={alipayQRCodePayment?.qrCode || ''}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeAlipayQRCodePayment()
+          }
+        }}
+        onOpenBilling={() => setBillingDialogOpen(true)}
       />
 
       <CreemConfirmDialog

@@ -72,7 +72,7 @@ func SubscriptionRequestAlipayPay(c *gin.Context) {
 	}
 
 	tradeNo := fmt.Sprintf("SUBALIUSR%dNO%s%d", userId, common.GetRandomString(6), time.Now().Unix())
-	gatewayURL, params, err := client.BuildPagePayParams(&alipayPagePayArgs{
+	launch, err := client.BuildDesktopPayLaunch(c.Request.Context(), &alipayPagePayArgs{
 		OutTradeNo:  tradeNo,
 		Subject:     fmt.Sprintf("订阅套餐 %s", plan.Title),
 		TotalAmount: plan.PriceAmount,
@@ -101,9 +101,11 @@ func SubscriptionRequestAlipayPay(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "success",
-		"data":    params,
-		"url":     gatewayURL,
+		"message":  "success",
+		"data":     launch.Data,
+		"url":      launch.URL,
+		"pay_mode": launch.PayMode,
+		"qr_code":  launch.QRCode,
 	})
 }
 

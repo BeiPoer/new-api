@@ -36,6 +36,7 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TitledCard } from '@/components/ui/titled-card'
+import { AlipayQRCodeDialog } from './dialogs/alipay-qr-code-dialog'
 import {
   Tooltip,
   TooltipContent,
@@ -66,7 +67,11 @@ interface SubscriptionPlansCardProps {
 
 function getEpayMethods(payMethods: PaymentMethod[] = []): PaymentMethod[] {
   return payMethods.filter(
-    (m) => m?.type && m.type !== 'stripe' && m.type !== 'creem'
+    (m) =>
+      m?.type &&
+      m.type !== 'stripe' &&
+      m.type !== 'creem' &&
+      m.type !== 'enterprise_alipay'
   )
 }
 
@@ -108,10 +113,12 @@ export function SubscriptionPlansCard({
 
   const [purchaseOpen, setPurchaseOpen] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState<PlanRecord | null>(null)
+  const [alipayQRCode, setAlipayQRCode] = useState('')
 
   const enableStripe = !!topupInfo?.enable_stripe_topup
   const enableCreem = !!topupInfo?.enable_creem_topup
   const enableOnlineTopUp = !!topupInfo?.enable_online_topup
+  const enableAlipay = !!topupInfo?.enable_alipay_topup
   const epayMethods = useMemo(
     () => getEpayMethods(topupInfo?.pay_methods),
     [topupInfo?.pay_methods]
@@ -629,8 +636,10 @@ export function SubscriptionPlansCard({
         plan={selectedPlan}
         enableStripe={enableStripe}
         enableCreem={enableCreem}
+        enableAlipay={enableAlipay}
         enableOnlineTopUp={enableOnlineTopUp}
         epayMethods={epayMethods}
+        onAlipayQRCode={setAlipayQRCode}
         purchaseLimit={
           selectedPlan?.plan?.max_purchase_per_user
             ? Number(selectedPlan.plan.max_purchase_per_user)
@@ -641,6 +650,15 @@ export function SubscriptionPlansCard({
             ? planPurchaseCountMap.get(selectedPlan.plan.id)
             : undefined
         }
+      />
+      <AlipayQRCodeDialog
+        open={!!alipayQRCode}
+        qrCode={alipayQRCode}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAlipayQRCode('')
+          }
+        }}
       />
     </>
   )

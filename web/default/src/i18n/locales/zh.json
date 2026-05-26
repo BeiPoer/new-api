@@ -4464,6 +4464,10 @@
     "operation and charging behavior": "运营和收费行为产生的法律责任",
     "，": "，",
     "，and ": "，",
-    "、": "、"
+    "、": "、",
+    "After payment succeeds, you can refresh billing history": "支付成功后，可以刷新账单历史查看到账状态",
+    "Scan the QR code to complete payment": "请扫描二维码完成支付",
+    "Scan with Alipay": "请使用支付宝扫码",
+    "Use Alipay to scan the QR code and complete payment": "使用支付宝扫描二维码并完成支付"
   }
 }

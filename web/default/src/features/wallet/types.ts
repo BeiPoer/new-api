@@ -35,8 +35,12 @@ export interface ApiResponse<T = unknown> {
 export type TopupInfoResponse = ApiResponse<TopupInfo>
 export type RedemptionResponse = ApiResponse<number>
 export type AmountResponse = ApiResponse<string>
+export type AlipayPayMode = 'qrcode' | 'page_pay'
+
 export type PaymentResponse = ApiResponse<Record<string, unknown>> & {
   url?: string
+  pay_mode?: AlipayPayMode
+  qr_code?: string
 }
 export type StripePaymentResponse = ApiResponse<{ pay_link: string }>
 export type AffiliateCodeResponse = ApiResponse<string>
@@ -117,12 +121,20 @@ export interface WaffoPayMethod {
 export interface TopupInfo {
   /** Whether online topup is enabled */
   enable_online_topup: boolean
+  /** Whether direct enterprise Alipay topup is enabled */
+  enable_alipay_topup?: boolean
+  /** Whether enterprise Alipay uses direct CNY request amounts */
+  enable_alipay_direct_cny?: boolean
   /** Whether Stripe topup is enabled */
   enable_stripe_topup: boolean
   /** Available payment methods */
   pay_methods: PaymentMethod[]
   /** Minimum topup amount for online topup */
   min_topup: number
+  /** Minimum topup amount for direct enterprise Alipay */
+  alipay_min_topup?: number
+  /** CNY/USD exchange rate for direct enterprise Alipay */
+  alipay_exchange_rate?: number
   /** Minimum topup amount for Stripe */
   stripe_min_topup: number
   /** Preset amount options */
@@ -181,6 +193,8 @@ export interface PaymentRequest {
   amount: number
   /** Payment method identifier */
   payment_method: string
+  /** Whether amount is already a direct CNY topup amount */
+  direct_cny?: boolean
 }
 
 /**
@@ -207,6 +221,8 @@ export interface WaffoPancakePaymentRequest {
 export interface AmountRequest {
   /** Topup amount to calculate */
   amount: number
+  /** Whether amount is already a direct CNY topup amount */
+  direct_cny?: boolean
 }
 
 /**

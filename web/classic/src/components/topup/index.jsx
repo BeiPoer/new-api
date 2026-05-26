@@ -29,7 +29,8 @@ import {
   copy,
   getQuotaPerUnit,
 } from '../../helpers';
-import { Modal, Toast } from '@douyinfe/semi-ui';
+import { Button, Modal, Toast } from '@douyinfe/semi-ui';
+import { QRCodeSVG } from 'qrcode.react';
 import { useTranslation } from 'react-i18next';
 import { UserContext } from '../../context/User';
 import { StatusContext } from '../../context/Status';
@@ -87,6 +88,7 @@ const TopUp = () => {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [payMethods, setPayMethods] = useState([]);
+  const [alipayQrCode, setAlipayQrCode] = useState('');
 
   const affFetchedRef = useRef(false);
 
@@ -343,6 +345,13 @@ const TopUp = () => {
           if (payWay === 'stripe') {
             // Stripe 支付回调处理
             window.open(data.pay_link, '_blank');
+          } else if (
+            payWay === 'enterprise_alipay' &&
+            res.data?.pay_mode === 'qrcode' &&
+            res.data?.qr_code
+          ) {
+            setAlipayQrCode(res.data.qr_code);
+            showSuccess(t('请使用支付宝扫码完成支付'));
           } else {
             // 普通支付表单提交
             let params = data;
@@ -1104,6 +1113,43 @@ const TopUp = () => {
             <p>{t('是否确认充值？')}</p>
           </>
         )}
+      </Modal>
+
+      <Modal
+        title={t('请使用支付宝扫码支付')}
+        visible={!!alipayQrCode}
+        onCancel={() => setAlipayQrCode('')}
+        footer={
+          <div className='flex justify-end gap-2'>
+            <Button
+              type='button'
+              theme='borderless'
+              onClick={() => setAlipayQrCode('')}
+            >
+              {t('关闭')}
+            </Button>
+            <Button
+              type='button'
+              theme='solid'
+              onClick={() => {
+                setAlipayQrCode('');
+                setOpenHistory(true);
+              }}
+            >
+              {t('查看账单')}
+            </Button>
+          </div>
+        }
+        centered
+      >
+        <div className='flex flex-col items-center gap-3 py-2'>
+          <div className='rounded-lg border bg-white p-4'>
+            {alipayQrCode ? <QRCodeSVG value={alipayQrCode} size={220} /> : null}
+          </div>
+          <p className='text-center text-sm text-gray-500'>
+            {t('支付成功后可刷新账单查看到账状态')}
+          </p>
+        </div>
       </Modal>
 
       {/* 主布局区域 */}
