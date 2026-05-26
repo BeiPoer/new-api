@@ -4469,6 +4469,10 @@
     "operation and charging behavior": "operation and charging behavior",
     "，": ", ",
     "，and ": ", and ",
-    "、": ", "
+    "、": ", ",
+    "After payment succeeds, you can refresh billing history": "Sau khi thanh toán thành công, bạn có thể làm mới lịch sử thanh toán",
+    "Scan the QR code to complete payment": "Quét mã QR để hoàn tất thanh toán",
+    "Scan with Alipay": "Quét bằng Alipay",
+    "Use Alipay to scan the QR code and complete payment": "Dùng Alipay quét mã QR để hoàn tất thanh toán"
   }
 }

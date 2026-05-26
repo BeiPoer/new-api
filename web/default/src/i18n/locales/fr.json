@@ -4469,6 +4469,10 @@
     "operation and charging behavior": "operation and charging behavior",
     "，": ", ",
     "，and ": ", and ",
-    "、": ", "
+    "、": ", ",
+    "After payment succeeds, you can refresh billing history": "Une fois le paiement réussi, vous pouvez actualiser l'historique de facturation",
+    "Scan the QR code to complete payment": "Scannez le code QR pour finaliser le paiement",
+    "Scan with Alipay": "Scanner avec Alipay",
+    "Use Alipay to scan the QR code and complete payment": "Utilisez Alipay pour scanner le code QR et finaliser le paiement"
   }
 }

@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -9,6 +10,8 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
 	"sort"
 	"strconv"
@@ -16,6 +19,7 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/gin-gonic/gin"
 )
@@ -26,13 +30,20 @@ const (
 	alipayCharset                    = "utf-8"
 	alipaySignType                   = "RSA2"
 	alipayVersion                    = "1.0"
+	alipayMethodPrecreate            = "alipay.trade.precreate"
 	alipayMethodPagePay              = "alipay.trade.page.pay"
 	alipayGatewayURL                 = "https://openapi.alipay.com/gateway.do"
+	alipayProductCodePrecreate       = "FACE_TO_FACE_PAYMENT"
 	alipayProductCodePagePay         = "FAST_INSTANT_TRADE_PAY"
+	alipayPayModeQRCode              = "qrcode"
+	alipayPayModePagePay             = "page_pay"
+	alipayResponseCodeSuccess        = "10000"
 	alipayTradeStatusSuccess         = "TRADE_SUCCESS"
 	alipayTradeStatusFinished        = "TRADE_FINISHED"
 	alipayTradeStatusClosed          = "TRADE_CLOSED"
 )
+
+var alipayHTTPClient = &http.Client{Timeout: 15 * time.Second}
 
 type alipayClient struct {
 	appID      string
@@ -48,6 +59,31 @@ type alipayPagePayArgs struct {
 	NotifyURL   string
 	ReturnURL   string
 	Body        string
+}
+
+type alipayPayLaunch struct {
+	PayMode string            `json:"pay_mode"`
+	QRCode  string            `json:"qr_code,omitempty"`
+	URL     string            `json:"url,omitempty"`
+	Data    map[string]string `json:"data,omitempty"`
+}
+
+type alipayPrecreateResponse struct {
+	AlipayTradePrecreateResponse struct {
+		Code       string `json:"code"`
+		Msg        string `json:"msg"`
+		SubCode    string `json:"sub_code"`
+		SubMsg     string `json:"sub_msg"`
+		OutTradeNo string `json:"out_trade_no"`
+		QRCode     string `json:"qr_code"`
+	} `json:"alipay_trade_precreate_response"`
+	ErrorResponse struct {
+		Code    string `json:"code"`
+		Msg     string `json:"msg"`
+		SubCode string `json:"sub_code"`
+		SubMsg  string `json:"sub_msg"`
+	} `json:"error_response"`
+	Sign string `json:"sign"`
 }
 
 type alipayVerifyInfo struct {
@@ -89,11 +125,154 @@ func GetAlipayClient() (*alipayClient, error) {
 	}, nil
 }
 
+func (c *alipayClient) BuildDesktopPayLaunch(ctx context.Context, args *alipayPagePayArgs) (*alipayPayLaunch, error) {
+	tradeNo, totalAmount := getAlipayLaunchLogFields(args)
+	qrCode, precreateErr := c.BuildPrecreateQRCode(ctx, args)
+	if precreateErr == nil {
+		logger.LogInfo(ctx, fmt.Sprintf("Alipay precreate succeeded trade_no=%s amount=%.2f", tradeNo, totalAmount))
+		return &alipayPayLaunch{
+			PayMode: alipayPayModeQRCode,
+			QRCode:  qrCode,
+			Data:    map[string]string{},
+		}, nil
+	}
+
+	logger.LogWarn(ctx, fmt.Sprintf("Alipay precreate failed, fallback to page.pay trade_no=%s amount=%.2f error=%q", tradeNo, totalAmount, precreateErr.Error()))
+	gatewayURL, params, pagePayErr := c.BuildPagePayParams(args)
+	if pagePayErr == nil {
+		return &alipayPayLaunch{
+			PayMode: alipayPayModePagePay,
+			QRCode:  gatewayURL,
+			URL:     gatewayURL,
+			Data:    params,
+		}, nil
+	}
+
+	logger.LogError(ctx, fmt.Sprintf("Alipay page.pay fallback failed trade_no=%s amount=%.2f error=%q", tradeNo, totalAmount, pagePayErr.Error()))
+	return nil, fmt.Errorf("alipay desktop payment failed: precreate=%v; pagepay=%w", precreateErr, pagePayErr)
+}
+
+func (c *alipayClient) BuildPrecreateQRCode(ctx context.Context, args *alipayPagePayArgs) (string, error) {
+	if c == nil {
+		return "", fmt.Errorf("alipay client is nil")
+	}
+	if args == nil ||
+		strings.TrimSpace(args.OutTradeNo) == "" ||
+		strings.TrimSpace(args.Subject) == "" ||
+		args.TotalAmount < 0.01 {
+		return "", fmt.Errorf("invalid alipay precreate args")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	bizContent := map[string]string{
+		"out_trade_no": args.OutTradeNo,
+		"product_code": alipayProductCodePrecreate,
+		"subject":      args.Subject,
+		"total_amount": formatAlipayMoney(args.TotalAmount),
+	}
+	if strings.TrimSpace(args.Body) != "" {
+		bizContent["body"] = args.Body
+	}
+	bizContentJSON, err := common.Marshal(bizContent)
+	if err != nil {
+		return "", err
+	}
+
+	params := map[string]string{
+		"app_id":      c.appID,
+		"biz_content": string(bizContentJSON),
+		"charset":     alipayCharset,
+		"format":      "JSON",
+		"method":      alipayMethodPrecreate,
+		"sign_type":   alipaySignType,
+		"timestamp":   time.Now().Format("2006-01-02 15:04:05"),
+		"version":     alipayVersion,
+	}
+	if strings.TrimSpace(args.NotifyURL) != "" {
+		params["notify_url"] = args.NotifyURL
+	}
+
+	sign, err := c.sign(params)
+	if err != nil {
+		return "", err
+	}
+	params["sign"] = sign
+
+	form := url.Values{}
+	for key, value := range params {
+		if strings.TrimSpace(value) != "" {
+			form.Set(key, value)
+		}
+	}
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		c.gatewayURL,
+		strings.NewReader(form.Encode()),
+	)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded;charset="+alipayCharset)
+
+	resp, err := alipayHTTPClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return "", fmt.Errorf("alipay precreate http status: %d", resp.StatusCode)
+	}
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	var result alipayPrecreateResponse
+	if err := common.Unmarshal(bodyBytes, &result); err != nil {
+		return "", fmt.Errorf("alipay precreate decode failed: %w body=%s", err, truncateAlipayResponseBody(bodyBytes))
+	}
+
+	response := result.AlipayTradePrecreateResponse
+	if response.Code == "" && result.ErrorResponse.Code != "" {
+		return "", fmt.Errorf(
+			"alipay precreate failed: %s",
+			formatAlipayResponseError(
+				result.ErrorResponse.Code,
+				result.ErrorResponse.Msg,
+				result.ErrorResponse.SubCode,
+				result.ErrorResponse.SubMsg,
+			),
+		)
+	}
+	if response.Code != alipayResponseCodeSuccess {
+		return "", fmt.Errorf(
+			"alipay precreate failed: %s",
+			formatAlipayResponseError(
+				response.Code,
+				response.Msg,
+				response.SubCode,
+				response.SubMsg,
+			),
+		)
+	}
+	qrCode := strings.TrimSpace(response.QRCode)
+	if qrCode == "" {
+		return "", fmt.Errorf("alipay precreate empty qr_code")
+	}
+	return qrCode, nil
+}
+
 func (c *alipayClient) BuildPagePayParams(args *alipayPagePayArgs) (string, map[string]string, error) {
 	if c == nil {
 		return "", nil, fmt.Errorf("alipay client is nil")
 	}
-	if strings.TrimSpace(args.OutTradeNo) == "" || strings.TrimSpace(args.Subject) == "" || args.TotalAmount < 0.01 {
+	if args == nil ||
+		strings.TrimSpace(args.OutTradeNo) == "" ||
+		strings.TrimSpace(args.Subject) == "" ||
+		args.TotalAmount < 0.01 {
 		return "", nil, fmt.Errorf("invalid alipay page pay args")
 	}
 
@@ -191,7 +370,7 @@ func (c *alipayClient) Verify(params map[string]string) (*alipayVerifyInfo, erro
 }
 
 func (c *alipayClient) sign(params map[string]string) (string, error) {
-	signContent := buildAlipaySignContent(params)
+	signContent := buildAlipayRequestSignContent(params)
 	hash := sha256.Sum256([]byte(signContent))
 	signature, err := rsa.SignPKCS1v15(rand.Reader, c.privateKey, crypto.SHA256, hash[:])
 	if err != nil {
@@ -201,6 +380,10 @@ func (c *alipayClient) sign(params map[string]string) (string, error) {
 }
 
 func buildAlipaySignContent(params map[string]string) string {
+	return buildAlipaySignContentWithOptions(params, false)
+}
+
+func buildAlipayRequestSignContent(params map[string]string) string {
 	return buildAlipaySignContentWithOptions(params, false)
 }
 
@@ -223,6 +406,36 @@ func buildAlipaySignContentWithOptions(params map[string]string, excludeSignType
 		parts = append(parts, fmt.Sprintf("%s=%s", key, params[key]))
 	}
 	return strings.Join(parts, "&")
+}
+
+func formatAlipayResponseError(code, msg, subCode, subMsg string) string {
+	parts := make([]string, 0, 4)
+	for _, part := range []string{code, msg, subCode, subMsg} {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			parts = append(parts, part)
+		}
+	}
+	if len(parts) == 0 {
+		return "unknown error"
+	}
+	return strings.Join(parts, ": ")
+}
+
+func getAlipayLaunchLogFields(args *alipayPagePayArgs) (string, float64) {
+	if args == nil {
+		return "", 0
+	}
+	return args.OutTradeNo, args.TotalAmount
+}
+
+func truncateAlipayResponseBody(body []byte) string {
+	const maxAlipayResponseLogLen = 512
+	text := strings.TrimSpace(string(body))
+	if len(text) <= maxAlipayResponseLogLen {
+		return text
+	}
+	return text[:maxAlipayResponseLogLen] + "...(truncated)"
 }
 
 func buildAlipayPagePaySubmit(gatewayURL string, params map[string]string) (string, map[string]string, error) {

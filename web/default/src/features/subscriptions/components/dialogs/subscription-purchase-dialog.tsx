@@ -42,6 +42,7 @@ import {
   paySubscriptionStripe,
   paySubscriptionCreem,
   paySubscriptionEpay,
+  paySubscriptionAlipay,
 } from '../../api'
 import { formatDuration, formatResetPeriod } from '../../lib'
 import type { PlanRecord } from '../../types'
@@ -57,10 +58,12 @@ interface Props {
   plan: PlanRecord | null
   enableStripe?: boolean
   enableCreem?: boolean
+  enableAlipay?: boolean
   enableOnlineTopUp?: boolean
   epayMethods?: PaymentMethod[]
   purchaseLimit?: number
   purchaseCount?: number
+  onAlipayQRCode?: (qrCode: string) => void
 }
 
 export function SubscriptionPurchaseDialog(props: Props) {
@@ -81,9 +84,10 @@ export function SubscriptionPurchaseDialog(props: Props) {
 
   const hasStripe = props.enableStripe && !!plan.stripe_price_id
   const hasCreem = props.enableCreem && !!plan.creem_product_id
+  const hasAlipay = !!props.enableAlipay
   const hasEpay =
     props.enableOnlineTopUp && (props.epayMethods || []).length > 0
-  const hasAnyPayment = hasStripe || hasCreem || hasEpay
+  const hasAnyPayment = hasStripe || hasCreem || hasAlipay || hasEpay
   const selectedEpayMethodLabel =
     (props.epayMethods || []).find((m) => m.type === selectedEpayMethod)
       ?.name ||
@@ -143,6 +147,58 @@ export function SubscriptionPurchaseDialog(props: Props) {
     typeof navigator !== 'undefined' &&
     /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
 
+  const submitFormPayment = (
+    action: string,
+    params: Record<string, unknown> | undefined
+  ) => {
+    const form = document.createElement('form')
+    form.action = action
+    form.method = 'POST'
+    if (!isSafari) {
+      form.target = '_blank'
+    }
+    Object.entries(params || {}).forEach(([key, value]) => {
+      const input = document.createElement('input')
+      input.type = 'hidden'
+      input.name = key
+      input.value = String(value)
+      form.appendChild(input)
+    })
+    document.body.appendChild(form)
+    form.submit()
+    document.body.removeChild(form)
+  }
+
+  const handlePayAlipay = async () => {
+    setPaying(true)
+    try {
+      const res = await paySubscriptionAlipay({ plan_id: plan.id })
+      if (
+        res.message === 'success' &&
+        res.pay_mode === 'qrcode' &&
+        res.qr_code
+      ) {
+        props.onAlipayQRCode?.(res.qr_code)
+        toast.success(t('Scan the QR code to complete payment'))
+        props.onOpenChange(false)
+      } else if (res.message === 'success' && res.url) {
+        submitFormPayment(res.url, res.data)
+        toast.success(t('Payment initiated'))
+        props.onOpenChange(false)
+      } else {
+        toast.error(
+          res.message && res.message !== 'success'
+            ? res.message
+            : t('Payment request failed')
+        )
+      }
+    } catch {
+      toast.error(t('Payment request failed'))
+    } finally {
+      setPaying(false)
+    }
+  }
+
   const handlePayEpay = async () => {
     if (!selectedEpayMethod) {
       toast.error(t('Please select a payment method'))
@@ -155,22 +211,7 @@ export function SubscriptionPurchaseDialog(props: Props) {
         payment_method: selectedEpayMethod,
       })
       if (res.message === 'success' && res.url) {
-        const form = document.createElement('form')
-        form.action = res.url
-        form.method = 'POST'
-        if (!isSafari) {
-          form.target = '_blank'
-        }
-        Object.entries(res.data || {}).forEach(([key, value]) => {
-          const input = document.createElement('input')
-          input.type = 'hidden'
-          input.name = key
-          input.value = String(value)
-          form.appendChild(input)
-        })
-        document.body.appendChild(form)
-        form.submit()
-        document.body.removeChild(form)
+        submitFormPayment(res.url, res.data)
         toast.success(t('Payment initiated'))
         props.onOpenChange(false)
       } else {
@@ -262,7 +303,7 @@ export function SubscriptionPurchaseDialog(props: Props) {
               <p className='text-muted-foreground text-xs'>
                 {t('Select payment method')}
               </p>
-              {(hasStripe || hasCreem) && (
+              {(hasStripe || hasCreem || hasAlipay) && (
                 <div className='grid grid-cols-2 gap-2 sm:flex'>
                   {hasStripe && (
                     <Button
@@ -282,6 +323,16 @@ export function SubscriptionPurchaseDialog(props: Props) {
                       disabled={paying || limitReached}
                     >
                       Creem
+                    </Button>
+                  )}
+                  {hasAlipay && (
+                    <Button
+                      variant='outline'
+                      className='flex-1'
+                      onClick={handlePayAlipay}
+                      disabled={paying || limitReached}
+                    >
+                      {t('Alipay')}
                     </Button>
                   )}
                 </div>
