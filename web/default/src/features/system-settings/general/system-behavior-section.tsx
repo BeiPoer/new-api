@@ -41,6 +41,8 @@ const behaviorSchema = z.object({
   DefaultCollapseSidebar: z.boolean(),
   DemoSiteEnabled: z.boolean(),
   SelfUseModeEnabled: z.boolean(),
+  'general_setting.register_phone_enabled': z.boolean(),
+  'general_setting.register_phone_required': z.boolean(),
 })
 
 type BehaviorFormValues = z.infer<typeof behaviorSchema>
@@ -62,13 +64,28 @@ export function SystemBehaviorSection({
 
   useResetForm(form, defaultValues)
 
+  const registerPhoneEnabled = form.watch(
+    'general_setting.register_phone_enabled'
+  )
+
   const onSubmit = async (data: BehaviorFormValues) => {
-    const updates = Object.entries(data).filter(
-      ([key, value]) => value !== defaultValues[key as keyof BehaviorFormValues]
+    const normalizedData = {
+      ...data,
+      'general_setting.register_phone_required':
+        data['general_setting.register_phone_enabled'] &&
+        data['general_setting.register_phone_required'],
+    }
+    const updates = Object.entries(normalizedData).filter(
+      ([key]) =>
+        normalizedData[key as keyof BehaviorFormValues] !==
+        defaultValues[key as keyof BehaviorFormValues]
     )
 
-    for (const [key, value] of updates) {
-      await updateOption.mutateAsync({ key, value })
+    for (const [key] of updates) {
+      await updateOption.mutateAsync({
+        key,
+        value: normalizedData[key as keyof BehaviorFormValues],
+      })
     }
   }
 
@@ -167,6 +184,66 @@ export function SystemBehaviorSection({
                 <FormControl>
                   <Switch
                     checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name='general_setting.register_phone_enabled'
+            render={({ field }) => (
+              <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
+                <div className='space-y-0.5'>
+                  <FormLabel className='text-base'>
+                    {t('Enable phone number field during registration')}
+                  </FormLabel>
+                  <FormDescription>
+                    {t(
+                      'Show the phone number field on the password registration form'
+                    )}
+                  </FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked)
+                      if (!checked) {
+                        form.setValue(
+                          'general_setting.register_phone_required',
+                          false,
+                          { shouldDirty: true }
+                        )
+                      }
+                    }}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name='general_setting.register_phone_required'
+            render={({ field }) => (
+              <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
+                <div className='space-y-0.5'>
+                  <FormLabel className='text-base'>
+                    {t('Require phone number during registration')}
+                  </FormLabel>
+                  <FormDescription>
+                    {t(
+                      'When enabled, users must provide a valid phone number to register'
+                    )}
+                  </FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={registerPhoneEnabled && field.value}
+                    disabled={!registerPhoneEnabled}
                     onCheckedChange={field.onChange}
                   />
                 </FormControl>

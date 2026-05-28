@@ -4473,6 +4473,11 @@
     "After payment succeeds, you can refresh billing history": "Une fois le paiement réussi, vous pouvez actualiser l'historique de facturation",
     "Scan the QR code to complete payment": "Scannez le code QR pour finaliser le paiement",
     "Scan with Alipay": "Scanner avec Alipay",
-    "Use Alipay to scan the QR code and complete payment": "Utilisez Alipay pour scanner le code QR et finaliser le paiement"
+    "Use Alipay to scan the QR code and complete payment": "Utilisez Alipay pour scanner le code QR et finaliser le paiement",
+    "Enable phone number field during registration": "Activer le champ numéro de téléphone à l'inscription",
+    "Phone number (optional)": "Numéro de téléphone (facultatif)",
+    "Require phone number during registration": "Exiger le numéro de téléphone à l'inscription",
+    "Show the phone number field on the password registration form": "Afficher le champ numéro de téléphone dans le formulaire d'inscription par mot de passe",
+    "When enabled, users must provide a valid phone number to register": "Lorsque cette option est activée, les utilisateurs doivent fournir un numéro de téléphone valide pour s'inscrire"
   }
 }

@@ -59,6 +59,7 @@ export type {
 export {
   loginFormSchema,
   registerFormSchema,
+  createRegisterFormSchema,
   forgotPasswordFormSchema,
   otpFormSchema,
   PASSWORD_MIN_LENGTH,

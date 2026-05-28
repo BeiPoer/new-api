@@ -4473,6 +4473,11 @@
     "After payment succeeds, you can refresh billing history": "支払い完了後、請求履歴を更新できます",
     "Scan the QR code to complete payment": "QRコードをスキャンして支払いを完了してください",
     "Scan with Alipay": "Alipayでスキャン",
-    "Use Alipay to scan the QR code and complete payment": "AlipayでQRコードをスキャンして支払いを完了してください"
+    "Use Alipay to scan the QR code and complete payment": "AlipayでQRコードをスキャンして支払いを完了してください",
+    "Enable phone number field during registration": "登録時に電話番号入力を有効化",
+    "Phone number (optional)": "電話番号（任意）",
+    "Require phone number during registration": "登録時に電話番号を必須にする",
+    "Show the phone number field on the password registration form": "パスワード登録フォームに電話番号フィールドを表示します",
+    "When enabled, users must provide a valid phone number to register": "有効にすると、ユーザーは登録時に有効な電話番号の入力が必要です"
   }
 }

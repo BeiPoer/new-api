@@ -38,6 +38,10 @@ const OPERATIONS_SECTIONS = [
           DefaultCollapseSidebar: settings.DefaultCollapseSidebar,
           DemoSiteEnabled: settings.DemoSiteEnabled,
           SelfUseModeEnabled: settings.SelfUseModeEnabled,
+          'general_setting.register_phone_enabled':
+            settings['general_setting.register_phone_enabled'],
+          'general_setting.register_phone_required':
+            settings['general_setting.register_phone_required'],
         }}
       />
     ),

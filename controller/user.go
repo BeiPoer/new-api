@@ -33,6 +33,25 @@ type LoginRequest struct {
 
 var phoneNumberRegex = regexp.MustCompile(`^1[3-9]\d{9}$`)
 
+func normalizeRegisterPhone(phone string) (string, string) {
+	generalSetting := operation_setting.GetGeneralSetting()
+	if !generalSetting.RegisterPhoneEnabled {
+		return "", ""
+	}
+
+	phone = strings.TrimSpace(phone)
+	if phone == "" {
+		if generalSetting.RegisterPhoneRequired {
+			return "", i18n.MsgUserPhoneRequired
+		}
+		return "", ""
+	}
+	if !phoneNumberRegex.MatchString(phone) {
+		return "", i18n.MsgUserPhoneInvalid
+	}
+	return phone, ""
+}
+
 func Login(c *gin.Context) {
 	if !common.PasswordLoginEnabled {
 		common.ApiErrorI18n(c, i18n.MsgUserPasswordLoginDisabled)
@@ -153,15 +172,12 @@ func Register(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
 	}
-	user.Phone = strings.TrimSpace(user.Phone)
-	if user.Phone == "" {
-		common.ApiErrorI18n(c, i18n.MsgUserPhoneRequired)
+	phone, errKey := normalizeRegisterPhone(user.Phone)
+	if errKey != "" {
+		common.ApiErrorI18n(c, errKey)
 		return
 	}
-	if !phoneNumberRegex.MatchString(user.Phone) {
-		common.ApiErrorI18n(c, i18n.MsgUserPhoneInvalid)
-		return
-	}
+	user.Phone = phone
 	if err := common.Validate.Struct(&user); err != nil {
 		common.ApiErrorI18n(c, i18n.MsgUserInputInvalid, map[string]any{"Error": err.Error()})
 		return

@@ -35,32 +35,37 @@ import {
   showError,
   showSuccess,
   showWarning,
+  toBoolean,
 } from '../../../helpers';
 import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
 
+const DEFAULT_INPUTS = {
+  TopUpLink: '',
+  'general_setting.docs_link': '',
+  'general_setting.quota_display_type': 'USD',
+  'general_setting.custom_currency_symbol': '¤',
+  'general_setting.custom_currency_exchange_rate': '',
+  QuotaPerUnit: '',
+  RetryTimes: '',
+  USDExchangeRate: '',
+  DisplayTokenStatEnabled: false,
+  DefaultCollapseSidebar: false,
+  DemoSiteEnabled: false,
+  SelfUseModeEnabled: false,
+  'general_setting.register_phone_enabled': false,
+  'general_setting.register_phone_required': false,
+  'token_setting.max_user_tokens': 1000,
+};
+
 export default function GeneralSettings(props) {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [showQuotaWarning, setShowQuotaWarning] = useState(false);
-  const [inputs, setInputs] = useState({
-    TopUpLink: '',
-    'general_setting.docs_link': '',
-    'general_setting.quota_display_type': 'USD',
-    'general_setting.custom_currency_symbol': '¤',
-    'general_setting.custom_currency_exchange_rate': '',
-    QuotaPerUnit: '',
-    RetryTimes: '',
-    USDExchangeRate: '',
-    DisplayTokenStatEnabled: false,
-    DefaultCollapseSidebar: false,
-    DemoSiteEnabled: false,
-    SelfUseModeEnabled: false,
-    'token_setting.max_user_tokens': 1000,
-  });
+  const [inputs, setInputs] = useState(() => ({ ...DEFAULT_INPUTS }));
   const refForm = useRef();
-  const [inputsRow, setInputsRow] = useState(inputs);
+  const [inputsRow, setInputsRow] = useState(() => ({ ...DEFAULT_INPUTS }));
 
   function handleFieldChange(fieldName) {
     return (value) => {
@@ -69,14 +74,20 @@ export default function GeneralSettings(props) {
   }
 
   function onSubmit() {
-    const updateArray = compareObjects(inputs, inputsRow);
+    const normalizedInputs = {
+      ...inputs,
+      'general_setting.register_phone_required':
+        inputs['general_setting.register_phone_enabled'] &&
+        inputs['general_setting.register_phone_required'],
+    };
+    const updateArray = compareObjects(normalizedInputs, inputsRow);
     if (!updateArray.length) return showWarning(t('你似乎并没有修改什么'));
     const requestQueue = updateArray.map((item) => {
       let value = '';
-      if (typeof inputs[item.key] === 'boolean') {
-        value = String(inputs[item.key]);
+      if (typeof normalizedInputs[item.key] === 'boolean') {
+        value = String(normalizedInputs[item.key]);
       } else {
-        value = inputs[item.key];
+        value = normalizedInputs[item.key];
       }
       return API.put('/api/option/', {
         key: item.key,
@@ -93,6 +104,9 @@ export default function GeneralSettings(props) {
             return showError(t('部分保存失败，请重试'));
         }
         showSuccess(t('保存成功'));
+        setInputs(normalizedInputs);
+        setInputsRow(structuredClone(normalizedInputs));
+        refForm.current.setValues(normalizedInputs);
         props.refresh();
       })
       .catch(() => {
@@ -142,6 +156,8 @@ export default function GeneralSettings(props) {
   }, [props.options]);
 
   const quotaDisplayType = inputs['general_setting.quota_display_type'];
+  const registerPhoneEnabled =
+    inputs['general_setting.register_phone_enabled'];
 
   const quotaDisplayTypeDesc = useMemo(() => {
     const descMap = {
@@ -199,10 +215,13 @@ export default function GeneralSettings(props) {
   }, [quotaDisplayType, combinedRate, inputs, t]);
 
   useEffect(() => {
-    const currentInputs = {};
-    for (let key in props.options) {
-      if (Object.keys(inputs).includes(key)) {
-        currentInputs[key] = props.options[key];
+    const currentInputs = { ...DEFAULT_INPUTS };
+    for (let key in props.options || {}) {
+      if (Object.keys(currentInputs).includes(key)) {
+        currentInputs[key] =
+          typeof DEFAULT_INPUTS[key] === 'boolean'
+            ? toBoolean(props.options[key])
+            : props.options[key];
       }
     }
     // 若旧字段存在且新字段缺失，则做一次兜底映射
@@ -216,12 +235,14 @@ export default function GeneralSettings(props) {
         : 'TOKENS';
     }
     // 回填自定义货币相关字段（如果后端已存在）
-    if (props.options['general_setting.custom_currency_symbol'] !== undefined) {
+    if (
+      props.options?.['general_setting.custom_currency_symbol'] !== undefined
+    ) {
       currentInputs['general_setting.custom_currency_symbol'] =
         props.options['general_setting.custom_currency_symbol'];
     }
     if (
-      props.options['general_setting.custom_currency_exchange_rate'] !==
+      props.options?.['general_setting.custom_currency_exchange_rate'] !==
       undefined
     ) {
       currentInputs['general_setting.custom_currency_exchange_rate'] =
@@ -388,6 +409,44 @@ export default function GeneralSettings(props) {
                   checkedText='｜'
                   uncheckedText='〇'
                   onChange={handleFieldChange('SelfUseModeEnabled')}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+                <Form.Switch
+                  field={'general_setting.register_phone_enabled'}
+                  label={t('注册时开启手机号填写')}
+                  extraText={t('在密码注册表单中显示手机号字段')}
+                  size='default'
+                  checkedText='｜'
+                  uncheckedText='〇'
+                  onChange={(value) => {
+                    handleFieldChange(
+                      'general_setting.register_phone_enabled',
+                    )(value);
+                    if (!value) {
+                      handleFieldChange(
+                        'general_setting.register_phone_required',
+                      )(false);
+                      refForm.current.setValue(
+                        'general_setting.register_phone_required',
+                        false,
+                      );
+                    }
+                  }}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+                <Form.Switch
+                  field={'general_setting.register_phone_required'}
+                  label={t('注册时必填手机号')}
+                  extraText={t('开启后，用户注册时必须填写有效手机号')}
+                  size='default'
+                  checkedText='｜'
+                  uncheckedText='〇'
+                  disabled={!registerPhoneEnabled}
+                  onChange={handleFieldChange(
+                    'general_setting.register_phone_required',
+                  )}
                 />
               </Col>
             </Row>
