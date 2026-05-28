@@ -32,6 +32,8 @@ const defaultOperationsSettings: OperationsSettings = {
   DefaultCollapseSidebar: false,
   DemoSiteEnabled: false,
   SelfUseModeEnabled: false,
+  'general_setting.register_phone_enabled': false,
+  'general_setting.register_phone_required': false,
   ChannelDisableThreshold: '',
   QuotaRemindThreshold: '',
   AutomaticDisableChannelEnabled: false,

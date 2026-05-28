@@ -134,6 +134,9 @@ const RegisterForm = () => {
   }, [statusState?.status]);
   const hasCustomOAuthProviders =
     (status.custom_oauth_providers || []).length > 0;
+  const registerPhoneEnabled = Boolean(status.register_phone_enabled);
+  const registerPhoneRequired =
+    registerPhoneEnabled && Boolean(status.register_phone_required);
   const hasOAuthRegisterOptions = Boolean(
     status.github_oauth ||
       status.discord_oauth ||
@@ -220,11 +223,15 @@ const RegisterForm = () => {
 
   async function handleSubmit(e) {
     const trimmedPhone = (phone || '').trim();
-    if (!trimmedPhone) {
+    if (registerPhoneEnabled && registerPhoneRequired && !trimmedPhone) {
       showInfo(t('请输入手机号'));
       return;
     }
-    if (!PHONE_NUMBER_REGEX.test(trimmedPhone)) {
+    if (
+      registerPhoneEnabled &&
+      trimmedPhone &&
+      !PHONE_NUMBER_REGEX.test(trimmedPhone)
+    ) {
       showInfo(t('请输入有效的手机号'));
       return;
     }
@@ -246,7 +253,11 @@ const RegisterForm = () => {
         if (!affCode) {
           affCode = localStorage.getItem('aff');
         }
-        const payload = { ...inputs, phone: trimmedPhone, aff_code: affCode };
+        const payload = {
+          ...inputs,
+          phone: registerPhoneEnabled && trimmedPhone ? trimmedPhone : '',
+          aff_code: affCode,
+        };
         const res = await API.post(
           `/api/user/register?turnstile=${turnstileToken}`,
           payload,
@@ -594,16 +605,22 @@ const RegisterForm = () => {
                   prefix={<IconUser />}
                 />
 
-                <Form.Input
-                  field='phone'
-                  label={t('手机号')}
-                  placeholder={t('请输入手机号')}
-                  name='phone'
-                  type='tel'
-                  maxLength={11}
-                  onChange={(value) => handleChange('phone', value)}
-                  prefix={<IconUser />}
-                />
+                {registerPhoneEnabled && (
+                  <Form.Input
+                    field='phone'
+                    label={
+                      registerPhoneRequired
+                        ? t('手机号')
+                        : t('手机号（选填）')
+                    }
+                    placeholder={t('请输入手机号')}
+                    name='phone'
+                    type='tel'
+                    maxLength={11}
+                    onChange={(value) => handleChange('phone', value)}
+                    prefix={<IconUser />}
+                  />
+                )}
 
                 <Form.Input
                   field='password'

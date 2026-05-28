@@ -4473,6 +4473,11 @@
     "After payment succeeds, you can refresh billing history": "После успешной оплаты можно обновить историю платежей",
     "Scan the QR code to complete payment": "Отсканируйте QR-код, чтобы завершить оплату",
     "Scan with Alipay": "Сканировать через Alipay",
-    "Use Alipay to scan the QR code and complete payment": "Отсканируйте QR-код в Alipay, чтобы завершить оплату"
+    "Use Alipay to scan the QR code and complete payment": "Отсканируйте QR-код в Alipay, чтобы завершить оплату",
+    "Enable phone number field during registration": "Включить поле номера телефона при регистрации",
+    "Phone number (optional)": "Номер телефона (необязательно)",
+    "Require phone number during registration": "Требовать номер телефона при регистрации",
+    "Show the phone number field on the password registration form": "Показывать поле номера телефона в форме регистрации с паролем",
+    "When enabled, users must provide a valid phone number to register": "Если включено, пользователи должны указать действительный номер телефона для регистрации"
   }
 }

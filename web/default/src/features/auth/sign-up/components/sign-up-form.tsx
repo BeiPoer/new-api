@@ -49,7 +49,7 @@ import { Turnstile } from '@/components/turnstile'
 import { register, wechatLoginByCode } from '@/features/auth/api'
 import { LegalConsent } from '@/features/auth/components/legal-consent'
 import { OAuthProviders } from '@/features/auth/components/oauth-providers'
-import { registerFormSchema } from '@/features/auth/constants'
+import { createRegisterFormSchema } from '@/features/auth/constants'
 import { useAuthRedirect } from '@/features/auth/hooks/use-auth-redirect'
 import { useEmailVerification } from '@/features/auth/hooks/use-email-verification'
 import { useTurnstile } from '@/features/auth/hooks/use-turnstile'
@@ -60,6 +60,16 @@ export function SignUpForm({
   ...props
 }: React.HTMLAttributes<HTMLFormElement>) {
   const { t } = useTranslation()
+  const { status } = useStatus()
+  const registerPhoneEnabled = Boolean(status?.register_phone_enabled)
+  const registerPhoneRequired =
+    registerPhoneEnabled && Boolean(status?.register_phone_required)
+  const registerSchema = useMemo(
+    () => createRegisterFormSchema(registerPhoneEnabled, registerPhoneRequired),
+    [registerPhoneEnabled, registerPhoneRequired]
+  )
+  type RegisterFormValues = z.infer<typeof registerSchema>
+
   const [isLoading, setIsLoading] = useState(false)
   const [verificationCode, setVerificationCode] = useState('')
   const [agreedToLegal, setAgreedToLegal] = useState(false)
@@ -68,7 +78,6 @@ export function SignUpForm({
   const [isWeChatSubmitting, setIsWeChatSubmitting] = useState(false)
   const legalConsentErrorMessage = t('Please agree to the legal terms first')
 
-  const { status } = useStatus()
   const {
     isTurnstileEnabled,
     turnstileSiteKey,
@@ -87,8 +96,8 @@ export function SignUpForm({
     validateTurnstile,
   })
 
-  const form = useForm<z.infer<typeof registerFormSchema>>({
-    resolver: zodResolver(registerFormSchema),
+  const form = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
     defaultValues: {
       username: '',
       phone: '',
@@ -131,7 +140,7 @@ export function SignUpForm({
     }
   }, [requiresLegalConsent])
 
-  async function onSubmit(data: z.infer<typeof registerFormSchema>) {
+  async function onSubmit(data: RegisterFormValues) {
     if (requiresLegalConsent && !agreedToLegal) {
       toast.error(legalConsentErrorMessage)
       return
@@ -154,7 +163,9 @@ export function SignUpForm({
       const res = await register({
         username: data.username,
         password: data.password,
-        phone: data.phone,
+        ...(registerPhoneEnabled && data.phone
+          ? { phone: data.phone.trim() }
+          : {}),
         email: data.email || undefined,
         verification_code: verificationCode || undefined,
         aff: getAffiliateCode(),
@@ -238,27 +249,32 @@ export function SignUpForm({
           )}
         />
 
-        {/* Phone Field */}
-        <FormField
-          control={form.control}
-          name='phone'
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t('Phone number')}</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder={t('Enter your phone number')}
-                  type='tel'
-                  autoComplete='tel'
-                  inputMode='numeric'
-                  maxLength={11}
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {registerPhoneEnabled && (
+          <FormField
+            control={form.control}
+            name='phone'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  {registerPhoneRequired
+                    ? t('Phone number')
+                    : t('Phone number (optional)')}
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder={t('Enter your phone number')}
+                    type='tel'
+                    autoComplete='tel'
+                    inputMode='numeric'
+                    maxLength={11}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         {/* Password Field */}
         <FormField

@@ -4473,6 +4473,11 @@
     "After payment succeeds, you can refresh billing history": "支付成功后，可以刷新账单历史查看到账状态",
     "Scan the QR code to complete payment": "请扫描二维码完成支付",
     "Scan with Alipay": "请使用支付宝扫码",
-    "Use Alipay to scan the QR code and complete payment": "使用支付宝扫描二维码并完成支付"
+    "Use Alipay to scan the QR code and complete payment": "使用支付宝扫描二维码并完成支付",
+    "Enable phone number field during registration": "注册时开启手机号填写",
+    "Phone number (optional)": "手机号（选填）",
+    "Require phone number during registration": "注册时必填手机号",
+    "Show the phone number field on the password registration form": "在密码注册表单中显示手机号字段",
+    "When enabled, users must provide a valid phone number to register": "开启后，用户注册时必须填写有效手机号"
   }
 }

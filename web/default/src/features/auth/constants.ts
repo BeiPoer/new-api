@@ -32,26 +32,49 @@ export const loginFormSchema = z.object({
     .min(8, 'Password must be at least 8 characters long'),
 })
 
-export const registerFormSchema = z
-  .object({
-    username: z.string().min(1, 'Please enter your username'),
-    phone: z
-      .string()
-      .trim()
-      .min(1, 'Please enter your phone number')
-      .regex(PHONE_NUMBER_REGEX, 'Please enter a valid phone number'),
-    email: z.string().optional(),
-    password: z
-      .string()
-      .min(1, 'Please enter your password')
-      .min(8, 'Password must be at least 8 characters long')
-      .max(20, 'Password must be at most 20 characters long'),
-    confirmPassword: z.string().min(1, 'Please confirm your password'),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match.",
-    path: ['confirmPassword'],
-  })
+export function createRegisterFormSchema(
+  phoneEnabled: boolean,
+  phoneRequired: boolean
+) {
+  return z
+    .object({
+      username: z.string().min(1, 'Please enter your username'),
+      phone: z
+        .string()
+        .trim()
+        .superRefine((value, ctx) => {
+          if (!phoneEnabled) return
+          if (!value) {
+            if (phoneRequired) {
+              ctx.addIssue({
+                code: 'custom',
+                message: 'Please enter your phone number',
+              })
+            }
+            return
+          }
+          if (!PHONE_NUMBER_REGEX.test(value)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: 'Please enter a valid phone number',
+            })
+          }
+        }),
+      email: z.string().optional(),
+      password: z
+        .string()
+        .min(1, 'Please enter your password')
+        .min(8, 'Password must be at least 8 characters long')
+        .max(20, 'Password must be at most 20 characters long'),
+      confirmPassword: z.string().min(1, 'Please confirm your password'),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: "Passwords don't match.",
+      path: ['confirmPassword'],
+    })
+}
+
+export const registerFormSchema = createRegisterFormSchema(false, false)
 
 export const forgotPasswordFormSchema = z.object({
   email: z.string().email({

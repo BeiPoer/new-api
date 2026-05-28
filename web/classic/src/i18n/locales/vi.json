@@ -4305,6 +4305,11 @@
     "透明": "透明",
     "不透明": "不透明",
     "AI生图": "AI生图",
-    "AI图片生成工具": "AI图片生成工具"
+    "AI图片生成工具": "AI图片生成工具",
+    "在密码注册表单中显示手机号字段": "Hiển thị trường số điện thoại trên biểu mẫu đăng ký bằng mật khẩu",
+    "开启后，用户注册时必须填写有效手机号": "Khi bật, người dùng phải cung cấp số điện thoại hợp lệ để đăng ký",
+    "手机号（选填）": "Số điện thoại (không bắt buộc)",
+    "注册时开启手机号填写": "Bật trường số điện thoại khi đăng ký",
+    "注册时必填手机号": "Bắt buộc nhập số điện thoại khi đăng ký"
   }
 }
