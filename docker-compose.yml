@@ -8,7 +8,7 @@
 #
 # Optional:
 #   - Override image tag with NEW_API_IMAGE, for example:
-#     NEW_API_IMAGE=ghcr.io/astorm-z/new-api:sha-<commit>
+#     NEW_API_IMAGE=ghcr.io/beipoer/new-api:sha-<commit>
 #
 # Using MySQL instead of PostgreSQL:
 #   1. Comment out the postgres service and SQL_DSN line 15
@@ -20,7 +20,7 @@
 
 services:
   new-api:
-    image: ${NEW_API_IMAGE:-ghcr.io/astorm-z/new-api:latest}
+    image: ${NEW_API_IMAGE:-ghcr.io/beipoer/new-api:latest}
     pull_policy: always
     container_name: new-api
     restart: always
