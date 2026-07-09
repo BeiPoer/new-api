@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { api } from '@/lib/api'
+
 import type {
   Redemption,
   ApiResponse,
@@ -43,13 +44,13 @@ export async function getRedemptions(
 export async function searchRedemptions(
   params: SearchRedemptionsParams
 ): Promise<GetRedemptionsResponse> {
-  const { keyword = '', p = 1, page_size = 10 } = params
-  const searchParams = new URLSearchParams({
-    keyword,
-    p: String(p),
-    page_size: String(page_size),
-  })
-  const res = await api.get(`/api/redemption/search?${searchParams}`)
+  const { keyword = '', status = '', p = 1, page_size = 10 } = params
+  const queryParams = new URLSearchParams()
+  queryParams.set('keyword', keyword)
+  if (status) queryParams.set('status', status)
+  queryParams.set('p', String(p))
+  queryParams.set('page_size', String(page_size))
+  const res = await api.get(`/api/redemption/search?${queryParams.toString()}`)
   return res.data
 }
 

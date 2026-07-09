@@ -26,10 +26,7 @@ export const PHONE_NUMBER_REGEX = /^1[3-9]\d{9}$/
 
 export const loginFormSchema = z.object({
   username: z.string().min(1, 'Please enter your username or email'),
-  password: z
-    .string()
-    .min(1, 'Please enter your password')
-    .min(8, 'Password must be at least 8 characters long'),
+  password: z.string().min(1, 'Please enter your password'),
 })
 
 export function createRegisterFormSchema(
@@ -64,7 +61,7 @@ export function createRegisterFormSchema(
       password: z
         .string()
         .min(1, 'Please enter your password')
-        .min(8, 'Password must be at least 8 characters long')
+        .min(8, 'Password must be between 8 and 20 characters')
         .max(20, 'Password must be at most 20 characters long'),
       confirmPassword: z.string().min(1, 'Please confirm your password'),
     })

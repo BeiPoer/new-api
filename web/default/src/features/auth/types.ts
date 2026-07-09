@@ -38,7 +38,7 @@ export interface RegisterPayload {
   phone?: string
   email?: string
   verification_code?: string
-  aff?: string
+  aff_code?: string
   turnstile?: string
 }
 
@@ -127,6 +127,7 @@ export interface SystemStatus {
     privacy_policy_enabled?: boolean
     oauth_register_enabled?: boolean
     register_enabled?: boolean
+    password_login_enabled?: boolean
     password_register_enabled?: boolean
     register_phone_enabled?: boolean
     register_phone_required?: boolean
@@ -171,6 +172,7 @@ export interface SystemStatus {
   privacy_policy_enabled?: boolean
   oauth_register_enabled?: boolean
   register_enabled?: boolean
+  password_login_enabled?: boolean
   password_register_enabled?: boolean
   register_phone_enabled?: boolean
   register_phone_required?: boolean

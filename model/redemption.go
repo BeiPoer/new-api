@@ -62,7 +62,7 @@ func GetAllRedemptions(startIdx int, num int) (redemptions []*Redemption, total 
 	return redemptions, total, nil
 }
 
-func SearchRedemptions(keyword string, startIdx int, num int) (redemptions []*Redemption, total int64, err error) {
+func SearchRedemptions(keyword string, status string, startIdx int, num int) (redemptions []*Redemption, total int64, err error) {
 	keyword = strings.TrimSpace(keyword)
 
 	tx := DB.Begin()
@@ -75,21 +75,42 @@ func SearchRedemptions(keyword string, startIdx int, num int) (redemptions []*Re
 		}
 	}()
 
-	// Build query based on keyword type
 	query := tx.Model(&Redemption{})
-	conditions := []string{"name LIKE ?"}
-	args := []any{keyword + "%"}
+	if keyword != "" {
+		conditions := []string{"name LIKE ?"}
+		args := []any{keyword + "%"}
+		if id, err := strconv.Atoi(keyword); err == nil {
+			conditions = append(conditions, "id = ?")
+			args = append(args, id)
+		}
+		if utf8.RuneCountInString(keyword) >= 6 {
+			conditions = append(conditions, commonKeyCol+" = ?")
+			args = append(args, keyword)
+		}
+		query = query.Where(strings.Join(conditions, " OR "), args...)
+	}
 
-	// Only try to convert to ID if the string represents a valid integer
-	if id, err := strconv.Atoi(keyword); err == nil {
-		conditions = append(conditions, "id = ?")
-		args = append(args, id)
+	if status != "" {
+		now := common.GetTimestamp()
+		switch status {
+		case "expired":
+			query = query.Where(
+				"status = ? AND expired_time != 0 AND expired_time < ?",
+				common.RedemptionCodeStatusEnabled,
+				now,
+			)
+		case strconv.Itoa(common.RedemptionCodeStatusEnabled):
+			query = query.Where(
+				"status = ? AND (expired_time = 0 OR expired_time >= ?)",
+				common.RedemptionCodeStatusEnabled,
+				now,
+			)
+		case strconv.Itoa(common.RedemptionCodeStatusDisabled):
+			query = query.Where("status = ?", common.RedemptionCodeStatusDisabled)
+		case strconv.Itoa(common.RedemptionCodeStatusUsed):
+			query = query.Where("status = ?", common.RedemptionCodeStatusUsed)
+		}
 	}
-	if utf8.RuneCountInString(keyword) >= 6 {
-		conditions = append(conditions, commonKeyCol+" = ?")
-		args = append(args, keyword)
-	}
-	query = query.Where(strings.Join(conditions, " OR "), args...)
 
 	// Get total count
 	err = query.Count(&total).Error
@@ -132,12 +153,12 @@ func Redeem(key string, userId int) (quota int, err error) {
 	redemption := &Redemption{}
 
 	keyCol := "`key`"
-	if common.UsingPostgreSQL {
+	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
 		keyCol = `"key"`
 	}
 	common.RandomSleep()
 	err = DB.Transaction(func(tx *gorm.DB) error {
-		err := tx.Set("gorm:query_option", "FOR UPDATE").Where(keyCol+" = ?", key).First(redemption).Error
+		err := lockForUpdate(tx).Where(keyCol+" = ?", key).First(redemption).Error
 		if err != nil {
 			return errors.New("无效的兑换码")
 		}
@@ -147,15 +168,23 @@ func Redeem(key string, userId int) (quota int, err error) {
 		if redemption.ExpiredTime != 0 && redemption.ExpiredTime < common.GetTimestamp() {
 			return errors.New("该兑换码已过期")
 		}
-		err = tx.Model(&User{}).Where("id = ?", userId).Update("quota", gorm.Expr("quota + ?", redemption.Quota)).Error
-		if err != nil {
-			return err
+		// Compare-and-swap on status: only the transaction that flips
+		// enabled -> used may credit quota, so a concurrent redeem of the
+		// same code loses here even without a row lock (e.g. on SQLite).
+		result := tx.Model(&Redemption{}).
+			Where("id = ? AND status = ?", redemption.Id, common.RedemptionCodeStatusEnabled).
+			Updates(map[string]interface{}{
+				"redeemed_time": common.GetTimestamp(),
+				"status":        common.RedemptionCodeStatusUsed,
+				"used_user_id":  userId,
+			})
+		if result.Error != nil {
+			return result.Error
 		}
-		redemption.RedeemedTime = common.GetTimestamp()
-		redemption.Status = common.RedemptionCodeStatusUsed
-		redemption.UsedUserId = userId
-		err = tx.Save(redemption).Error
-		return err
+		if result.RowsAffected == 0 {
+			return errors.New("该兑换码已被使用")
+		}
+		return tx.Model(&User{}).Where("id = ?", userId).Update("quota", gorm.Expr("quota + ?", redemption.Quota)).Error
 	})
 	if err != nil {
 		common.SysError("redemption failed: " + err.Error())
