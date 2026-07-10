@@ -380,6 +380,28 @@ func TestSMTPUsesLoginAuthForRemotePlaintextConnection(t *testing.T) {
 	}
 }
 
+func TestSMTPLoginAuthFallsBackByChallengeOrder(t *testing.T) {
+	withSMTPSettings(t)
+	SMTPServer = "smtp.example.com"
+
+	auth := AutoSMTPAuth("sender@example.com", "secret")
+	mech, _, err := auth.Start(&smtp.ServerInfo{
+		Name: "smtp.example.com",
+		Auth: []string{"PLAIN", "LOGIN"},
+		TLS:  false,
+	})
+	require.NoError(t, err)
+	require.Equal(t, "LOGIN", mech)
+
+	resp, err := auth.Next([]byte("account please"), true)
+	require.NoError(t, err)
+	require.Equal(t, "sender@example.com", string(resp))
+
+	resp, err = auth.Next([]byte("credential please"), true)
+	require.NoError(t, err)
+	require.Equal(t, "secret", string(resp))
+}
+
 func TestSMTPPlainAuthRejectsRemotePlaintextConnection(t *testing.T) {
 	server := newFakeSMTPServerWithSTARTTLSAdvertisement(t, false)
 	server.authMechanisms = []string{"PLAIN"}

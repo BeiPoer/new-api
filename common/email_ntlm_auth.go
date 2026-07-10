@@ -9,9 +9,10 @@ import (
 )
 
 type smtpAutoAuth struct {
-	username string
-	password string
-	mech     string
+	username  string
+	password  string
+	mech      string
+	loginStep int
 }
 
 func AutoSMTPAuth(username, password string) smtp.Auth {
@@ -25,18 +26,21 @@ func (a *smtpAutoAuth) Start(server *smtp.ServerInfo) (string, []byte, error) {
 	}
 	if useLoginAuth {
 		a.mech = "LOGIN"
+		a.loginStep = 0
 		return "LOGIN", []byte{}, nil
 	}
 
 	switch {
 	case server != nil && !server.TLS && smtpServerSupportsAuth(server, "LOGIN"):
 		a.mech = "LOGIN"
+		a.loginStep = 0
 		return "LOGIN", []byte{}, nil
 	case smtpServerSupportsAuth(server, "PLAIN"):
 		a.mech = "PLAIN"
 		return smtp.PlainAuth("", a.username, a.password, SMTPServer).Start(server)
 	case smtpServerSupportsAuth(server, "LOGIN"):
 		a.mech = "LOGIN"
+		a.loginStep = 0
 		return "LOGIN", []byte{}, nil
 	case smtpServerSupportsAuth(server, "NTLM"):
 		a.mech = "NTLM"
@@ -58,10 +62,19 @@ func (a *smtpAutoAuth) Next(fromServer []byte, more bool) ([]byte, error) {
 
 	switch a.mech {
 	case "LOGIN":
-		switch string(fromServer) {
-		case "Username:":
+		challenge := strings.ToLower(strings.TrimSpace(string(fromServer)))
+		switch {
+		case strings.Contains(challenge, "user") || strings.Contains(challenge, "login"):
+			a.loginStep = 1
 			return []byte(a.username), nil
-		case "Password:":
+		case strings.Contains(challenge, "pass"):
+			a.loginStep = 2
+			return []byte(a.password), nil
+		case a.loginStep == 0:
+			a.loginStep = 1
+			return []byte(a.username), nil
+		case a.loginStep == 1:
+			a.loginStep = 2
 			return []byte(a.password), nil
 		default:
 			return nil, errors.New("unknown SMTP AUTH LOGIN challenge")
