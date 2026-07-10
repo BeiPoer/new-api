@@ -349,8 +349,40 @@ func TestSendEmailDoesNotAutoUpgradeWhenStartTLSDisabled(t *testing.T) {
 	}
 }
 
+func TestSMTPUsesLoginAuthForRemotePlaintextConnection(t *testing.T) {
+	server := newFakeSMTPServerWithSTARTTLSAdvertisement(t, false)
+	defer server.close()
+	withSMTPSettings(t)
+
+	SMTPServer = "smtp.example.com"
+	SMTPPort = server.port
+	SMTPSSLEnabled = false
+	SMTPStartTLSEnabled = false
+	SMTPInsecureSkipVerify = false
+	SMTPForceAuthLogin = false
+	SMTPAccount = "sender@example.com"
+	SMTPFrom = "sender@example.com"
+	SMTPToken = "secret"
+
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", server.host, server.port))
+	require.NoError(t, err)
+	client, err := smtp.NewClient(conn, SMTPServer)
+	require.NoError(t, err)
+
+	err = client.Auth(getSMTPAuth())
+	require.NoError(t, err)
+
+	select {
+	case command := <-server.authCommands:
+		require.Contains(t, command, "AUTH LOGIN")
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for SMTP AUTH")
+	}
+}
+
 func TestSMTPPlainAuthRejectsRemotePlaintextConnection(t *testing.T) {
 	server := newFakeSMTPServerWithSTARTTLSAdvertisement(t, false)
+	server.authMechanisms = []string{"PLAIN"}
 	defer server.close()
 	withSMTPSettings(t)
 

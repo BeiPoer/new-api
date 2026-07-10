@@ -29,6 +29,9 @@ func (a *smtpAutoAuth) Start(server *smtp.ServerInfo) (string, []byte, error) {
 	}
 
 	switch {
+	case server != nil && !server.TLS && smtpServerSupportsAuth(server, "LOGIN"):
+		a.mech = "LOGIN"
+		return "LOGIN", []byte{}, nil
 	case smtpServerSupportsAuth(server, "PLAIN"):
 		a.mech = "PLAIN"
 		return smtp.PlainAuth("", a.username, a.password, SMTPServer).Start(server)
