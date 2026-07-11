@@ -58,6 +58,11 @@ import { SettingsPageFormActions } from '../components/settings-page-context'
 import { SettingsSection } from '../components/settings-section'
 import { useUpdateOption } from '../hooks/use-update-option'
 import { safeNumberFieldProps } from '../utils/numeric-field'
+import {
+  AlipaySettingsSection,
+  type AlipaySettingsErrors,
+  type AlipaySettingsValues,
+} from './alipay-settings-section'
 import { AmountDiscountVisualEditor } from './amount-discount-visual-editor'
 import { AmountOptionsVisualEditor } from './amount-options-visual-editor'
 import { CreemProductsVisualEditor } from './creem-products-visual-editor'
@@ -94,6 +99,18 @@ function isHttpOriginUrl(value: string) {
   }
 }
 
+function isOptionalHttpUrl(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) return true
+
+  try {
+    const url = new URL(trimmed)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 const paymentSchema = z.object({
   PayAddress: z.string().refine((value) => {
     const trimmed = value.trim()
@@ -102,6 +119,26 @@ const paymentSchema = z.object({
   }, 'Provide a valid callback URL starting with http:// or https://'),
   EpayId: z.string(),
   EpayKey: z.string(),
+  AlipayEnabled: z.boolean(),
+  AlipayAppID: z.string(),
+  AlipayPrivateKey: z.string(),
+  AlipayPublicKey: z.string(),
+  AlipayNotifyURL: z
+    .string()
+    .refine(isOptionalHttpUrl, 'Enter a valid HTTP or HTTPS URL'),
+  AlipayReturnURL: z
+    .string()
+    .refine(isOptionalHttpUrl, 'Enter a valid HTTP or HTTPS URL'),
+  AlipaySubscriptionReturnURL: z
+    .string()
+    .refine(isOptionalHttpUrl, 'Enter a valid HTTP or HTTPS URL'),
+  AlipayMinTopUp: z.coerce
+    .number()
+    .int('Enter a whole number')
+    .min(1, 'Enter a value of at least 1'),
+  AlipayExchangeRate: z.coerce
+    .number()
+    .positive('Enter a value greater than 0'),
   Price: z.coerce.number().min(0),
   MinTopUp: z.coerce.number().min(0),
   CustomCallbackAddress: z
@@ -360,7 +397,7 @@ export function PaymentSettingsSection({
     },
   })
 
-  const { isSubmitting } = form.formState
+  const { errors, isSubmitting } = form.formState
 
   const setPaymentValue = React.useCallback(
     (
@@ -383,6 +420,19 @@ export function PaymentSettingsSection({
     <K extends keyof WaffoFormFieldValues>(
       key: K,
       value: WaffoFormFieldValues[K]
+    ) => {
+      setPaymentValue(
+        key as keyof PaymentFormValues,
+        value as PaymentFormValues[keyof PaymentFormValues]
+      )
+    },
+    [setPaymentValue]
+  )
+
+  const setAlipayValue = React.useCallback(
+    <K extends keyof AlipaySettingsValues>(
+      key: K,
+      value: AlipaySettingsValues[K]
     ) => {
       setPaymentValue(
         key as keyof PaymentFormValues,
@@ -422,6 +472,15 @@ export function PaymentSettingsSection({
       PayAddress: removeTrailingSlash(values.PayAddress),
       EpayId: values.EpayId.trim(),
       EpayKey: values.EpayKey.trim(),
+      AlipayEnabled: values.AlipayEnabled,
+      AlipayAppID: values.AlipayAppID.trim(),
+      AlipayPrivateKey: values.AlipayPrivateKey.trim(),
+      AlipayPublicKey: values.AlipayPublicKey.trim(),
+      AlipayNotifyURL: values.AlipayNotifyURL.trim(),
+      AlipayReturnURL: values.AlipayReturnURL.trim(),
+      AlipaySubscriptionReturnURL: values.AlipaySubscriptionReturnURL.trim(),
+      AlipayMinTopUp: values.AlipayMinTopUp,
+      AlipayExchangeRate: values.AlipayExchangeRate,
       Price: values.Price,
       MinTopUp: values.MinTopUp,
       CustomCallbackAddress: removeTrailingSlash(values.CustomCallbackAddress),
@@ -465,6 +524,16 @@ export function PaymentSettingsSection({
       PayAddress: removeTrailingSlash(initialRef.current.PayAddress),
       EpayId: initialRef.current.EpayId.trim(),
       EpayKey: initialRef.current.EpayKey.trim(),
+      AlipayEnabled: initialRef.current.AlipayEnabled,
+      AlipayAppID: initialRef.current.AlipayAppID.trim(),
+      AlipayPrivateKey: initialRef.current.AlipayPrivateKey.trim(),
+      AlipayPublicKey: initialRef.current.AlipayPublicKey.trim(),
+      AlipayNotifyURL: initialRef.current.AlipayNotifyURL.trim(),
+      AlipayReturnURL: initialRef.current.AlipayReturnURL.trim(),
+      AlipaySubscriptionReturnURL:
+        initialRef.current.AlipaySubscriptionReturnURL.trim(),
+      AlipayMinTopUp: initialRef.current.AlipayMinTopUp,
+      AlipayExchangeRate: initialRef.current.AlipayExchangeRate,
       Price: initialRef.current.Price,
       MinTopUp: initialRef.current.MinTopUp,
       CustomCallbackAddress: removeTrailingSlash(
@@ -521,6 +590,54 @@ export function PaymentSettingsSection({
 
     if (sanitized.EpayKey && sanitized.EpayKey !== initial.EpayKey) {
       updates.push({ key: 'EpayKey', value: sanitized.EpayKey })
+    }
+
+    if (sanitized.AlipayEnabled !== initial.AlipayEnabled) {
+      updates.push({ key: 'AlipayEnabled', value: sanitized.AlipayEnabled })
+    }
+
+    if (sanitized.AlipayAppID !== initial.AlipayAppID) {
+      updates.push({ key: 'AlipayAppID', value: sanitized.AlipayAppID })
+    }
+
+    if (sanitized.AlipayPrivateKey) {
+      updates.push({
+        key: 'AlipayPrivateKey',
+        value: sanitized.AlipayPrivateKey,
+      })
+    }
+
+    if (sanitized.AlipayPublicKey) {
+      updates.push({ key: 'AlipayPublicKey', value: sanitized.AlipayPublicKey })
+    }
+
+    if (sanitized.AlipayNotifyURL !== initial.AlipayNotifyURL) {
+      updates.push({ key: 'AlipayNotifyURL', value: sanitized.AlipayNotifyURL })
+    }
+
+    if (sanitized.AlipayReturnURL !== initial.AlipayReturnURL) {
+      updates.push({ key: 'AlipayReturnURL', value: sanitized.AlipayReturnURL })
+    }
+
+    if (
+      sanitized.AlipaySubscriptionReturnURL !==
+      initial.AlipaySubscriptionReturnURL
+    ) {
+      updates.push({
+        key: 'AlipaySubscriptionReturnURL',
+        value: sanitized.AlipaySubscriptionReturnURL,
+      })
+    }
+
+    if (sanitized.AlipayMinTopUp !== initial.AlipayMinTopUp) {
+      updates.push({ key: 'AlipayMinTopUp', value: sanitized.AlipayMinTopUp })
+    }
+
+    if (sanitized.AlipayExchangeRate !== initial.AlipayExchangeRate) {
+      updates.push({
+        key: 'AlipayExchangeRate',
+        value: sanitized.AlipayExchangeRate,
+      })
     }
 
     if (sanitized.Price !== initial.Price) {
@@ -783,6 +900,24 @@ export function PaymentSettingsSection({
   }
 
   const currentFormValues = form.watch()
+  const alipayValues: AlipaySettingsValues = {
+    AlipayEnabled: currentFormValues.AlipayEnabled,
+    AlipayAppID: currentFormValues.AlipayAppID,
+    AlipayPrivateKey: currentFormValues.AlipayPrivateKey,
+    AlipayPublicKey: currentFormValues.AlipayPublicKey,
+    AlipayNotifyURL: currentFormValues.AlipayNotifyURL,
+    AlipayReturnURL: currentFormValues.AlipayReturnURL,
+    AlipaySubscriptionReturnURL: currentFormValues.AlipaySubscriptionReturnURL,
+    AlipayMinTopUp: currentFormValues.AlipayMinTopUp,
+    AlipayExchangeRate: currentFormValues.AlipayExchangeRate,
+  }
+  const alipayErrors: AlipaySettingsErrors = {
+    AlipayNotifyURL: errors.AlipayNotifyURL?.message,
+    AlipayReturnURL: errors.AlipayReturnURL?.message,
+    AlipaySubscriptionReturnURL: errors.AlipaySubscriptionReturnURL?.message,
+    AlipayMinTopUp: errors.AlipayMinTopUp?.message,
+    AlipayExchangeRate: errors.AlipayExchangeRate?.message,
+  }
   const waffoValues: WaffoSettingsValues = {
     WaffoEnabled: currentFormValues.WaffoEnabled,
     WaffoApiKey: currentFormValues.WaffoApiKey,
@@ -887,9 +1022,12 @@ export function PaymentSettingsSection({
           />
           <Tabs defaultValue='general' className='min-w-0'>
             <div className='overflow-x-auto pb-1'>
-              <TabsList className='grid min-w-[44rem] grid-cols-6'>
+              <TabsList className='grid min-w-[52rem] grid-cols-7'>
                 <TabsTrigger value='general'>{t('General')}</TabsTrigger>
                 <TabsTrigger value='epay'>Epay</TabsTrigger>
+                <TabsTrigger value='alipay'>
+                  {t('Enterprise Alipay')}
+                </TabsTrigger>
                 <TabsTrigger value='stripe'>{t('Stripe')}</TabsTrigger>
                 <TabsTrigger value='creem'>Creem</TabsTrigger>
                 <TabsTrigger value='waffo-pancake'>Waffo Pancake</TabsTrigger>
@@ -1139,12 +1277,16 @@ export function PaymentSettingsSection({
                       <FormControl>
                         <Textarea
                           rows={3}
-                          placeholder={t('Optional payment notice shown to users')}
+                          placeholder={t(
+                            'Optional payment notice shown to users'
+                          )}
                           {...field}
                         />
                       </FormControl>
                       <FormDescription>
-                        {t('Shown below account statistics on the wallet page when set')}
+                        {t(
+                          'Shown below account statistics on the wallet page when set'
+                        )}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -1270,6 +1412,14 @@ export function PaymentSettingsSection({
                   />
                 </div>
               </div>
+            </TabsContent>
+
+            <TabsContent value='alipay' className={paymentTabContentClassName}>
+              <AlipaySettingsSection
+                values={alipayValues}
+                errors={alipayErrors}
+                onValueChange={setAlipayValue}
+              />
             </TabsContent>
 
             <TabsContent value='stripe' className={paymentTabContentClassName}>
