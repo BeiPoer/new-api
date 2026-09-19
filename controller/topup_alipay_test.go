@@ -1,6 +1,9 @@
 package controller
 
 import (
+	"github.com/QuantumNous/new-api/common"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"math"
 	"testing"
 
@@ -51,5 +54,22 @@ func TestGetAlipayPayMoneyUsesAlipayExchangeRateForUSDDisplay(t *testing.T) {
 	payMoney := getAlipayPayMoney(2, "default", false)
 	if math.Abs(payMoney-14.6) > 0.000001 {
 		t.Fatalf("payMoney = %v, want 14.6", payMoney)
+	}
+}
+
+func TestValidateAlipayTopUpQuota(t *testing.T) {
+	oldDisplay, oldRate, oldUnit := operation_setting.GetGeneralSetting().QuotaDisplayType, operation_setting.USDExchangeRate, common.QuotaPerUnit
+	operation_setting.GetGeneralSetting().QuotaDisplayType = operation_setting.QuotaDisplayTypeCNY
+	operation_setting.USDExchangeRate, common.QuotaPerUnit = 7, 500000
+	t.Cleanup(func() {
+		operation_setting.GetGeneralSetting().QuotaDisplayType = oldDisplay
+		operation_setting.USDExchangeRate, common.QuotaPerUnit = oldRate, oldUnit
+	})
+	quota, err := validateAlipayTopUpQuota(14, true)
+	require.NoError(t, err)
+	assert.Equal(t, 1000000, quota)
+	for _, amount := range []int64{0, -1, 9223372036854775807} {
+		_, err := validateAlipayTopUpQuota(amount, true)
+		require.Error(t, err)
 	}
 }
