@@ -82,6 +82,15 @@ func getAlipayPayMoney(amount int64, group string, directCNY bool) float64 {
 	return payMoney.InexactFloat64()
 }
 
+func validateAlipayTopUpQuota(amount int64, directCNY bool) (int, error) {
+	if shouldUseAlipayDirectCNYRequest(directCNY) {
+		return validateCreditedQuota(decimal.NewFromInt(amount).
+			Div(decimal.NewFromFloat(operation_setting.USDExchangeRate)).
+			Mul(decimal.NewFromFloat(common.QuotaPerUnit)))
+	}
+	return validateTopUpQuota(amount)
+}
+
 func RequestAlipayAmount(c *gin.Context) {
 	var req AlipayAmountRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -95,6 +104,14 @@ func RequestAlipayAmount(c *gin.Context) {
 	}
 
 	id := c.GetInt("id")
+	creditedQuota, err := validateAlipayTopUpQuota(req.Amount, req.DirectCNY)
+	if err == nil {
+		err = model.ValidateTopUpQuotaCapacity(id, creditedQuota)
+	}
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": err.Error()})
+		return
+	}
 	group, err := model.GetUserGroup(id, true)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "获取用户分组失败"})
@@ -125,6 +142,14 @@ func RequestAlipayPay(c *gin.Context) {
 	}
 
 	id := c.GetInt("id")
+	creditedQuota, err := validateAlipayTopUpQuota(req.Amount, req.DirectCNY)
+	if err == nil {
+		err = model.ValidateTopUpQuotaCapacity(id, creditedQuota)
+	}
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": err.Error()})
+		return
+	}
 	group, err := model.GetUserGroup(id, true)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "获取用户分组失败"})
