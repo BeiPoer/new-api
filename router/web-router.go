@@ -21,6 +21,8 @@ type WebAssets struct {
 
 func SetWebRouter(router *gin.Engine, assets WebAssets, pluginDispatcher gin.HandlerFunc) {
 	frontendFS := common.EmbedFolder(assets.BuildFS, "web/dist")
+	router.GET("/robots.txt", func(c *gin.Context) { scheme := "http"; if c.Request.TLS != nil { scheme = "https" }; c.Data(http.StatusOK, "text/plain; charset=utf-8", []byte("User-agent: *\nAllow: /\nSitemap: "+scheme+"://"+c.Request.Host+"/sitemap.xml\n")) })
+	router.GET("/sitemap.xml", controller.GetSitemap)
 
 	router.NoRoute(
 		pluginDispatcher,

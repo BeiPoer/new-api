@@ -26,9 +26,12 @@ import { Route as errors403RouteImport } from './routes/(errors)/403'
 import { Route as errors404RouteImport } from './routes/(errors)/404'
 import { Route as errors500RouteImport } from './routes/(errors)/500'
 import { Route as errors503RouteImport } from './routes/(errors)/503'
+import { Route as AuthenticatedArticleManagementRouteImport } from './routes/_authenticated/article-management'
 import { Route as AuthenticatedChat2linkRouteImport } from './routes/_authenticated/chat2link'
 import { Route as AuthenticatedSystemSettingsRouteRouteImport } from './routes/_authenticated/system-settings/route'
 import { Route as AboutIndexRouteImport } from './routes/about/index'
+import { Route as ArticlesIndexRouteImport } from './routes/articles/index'
+import { Route as ArticlesSlugRouteImport } from './routes/articles/$slug'
 import { Route as OauthProviderRouteImport } from './routes/oauth/$provider'
 import { Route as PricingIndexRouteImport } from './routes/pricing/index'
 import { Route as RankingsIndexRouteImport } from './routes/rankings/index'
@@ -156,6 +159,12 @@ const errors503Route = errors503RouteImport.update({
   path: '/503',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedArticleManagementRoute =
+  AuthenticatedArticleManagementRouteImport.update({
+    id: '/article-management',
+    path: '/article-management',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedChat2linkRoute = AuthenticatedChat2linkRouteImport.update({
   id: '/chat2link',
   path: '/chat2link',
@@ -170,6 +179,16 @@ const AuthenticatedSystemSettingsRouteRoute =
 const AboutIndexRoute = AboutIndexRouteImport.update({
   id: '/about/',
   path: '/about/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArticlesIndexRoute = ArticlesIndexRouteImport.update({
+  id: '/articles/',
+  path: '/articles/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArticlesSlugRoute = ArticlesSlugRouteImport.update({
+  id: '/articles/$slug',
+  path: '/articles/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OauthProviderRoute = OauthProviderRouteImport.update({
@@ -439,9 +458,12 @@ export interface FileRoutesByFullPath {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
+  '/article-management': typeof AuthenticatedArticleManagementRoute
   '/chat2link': typeof AuthenticatedChat2linkRoute
+  '/articles/$slug': typeof ArticlesSlugRoute
   '/oauth/$provider': typeof OauthProviderRoute
   '/about/': typeof AboutIndexRoute
+  '/articles/': typeof ArticlesIndexRoute
   '/pricing/': typeof PricingIndexRoute
   '/rankings/': typeof RankingsIndexRoute
   '/setup/': typeof SetupIndexRoute
@@ -501,9 +523,12 @@ export interface FileRoutesByTo {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
+  '/article-management': typeof AuthenticatedArticleManagementRoute
   '/chat2link': typeof AuthenticatedChat2linkRoute
+  '/articles/$slug': typeof ArticlesSlugRoute
   '/oauth/$provider': typeof OauthProviderRoute
   '/about': typeof AboutIndexRoute
+  '/articles': typeof ArticlesIndexRoute
   '/pricing': typeof PricingIndexRoute
   '/rankings': typeof RankingsIndexRoute
   '/setup': typeof SetupIndexRoute
@@ -567,9 +592,12 @@ export interface FileRoutesById {
   '/(errors)/404': typeof errors404Route
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
+  '/_authenticated/article-management': typeof AuthenticatedArticleManagementRoute
   '/_authenticated/chat2link': typeof AuthenticatedChat2linkRoute
+  '/articles/$slug': typeof ArticlesSlugRoute
   '/oauth/$provider': typeof OauthProviderRoute
   '/about/': typeof AboutIndexRoute
+  '/articles/': typeof ArticlesIndexRoute
   '/pricing/': typeof PricingIndexRoute
   '/rankings/': typeof RankingsIndexRoute
   '/setup/': typeof SetupIndexRoute
@@ -632,9 +660,12 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
+    | '/article-management'
     | '/chat2link'
+    | '/articles/$slug'
     | '/oauth/$provider'
     | '/about/'
+    | '/articles/'
     | '/pricing/'
     | '/rankings/'
     | '/setup/'
@@ -694,9 +725,12 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
+    | '/article-management'
     | '/chat2link'
+    | '/articles/$slug'
     | '/oauth/$provider'
     | '/about'
+    | '/articles'
     | '/pricing'
     | '/rankings'
     | '/setup'
@@ -759,9 +793,12 @@ export interface FileRouteTypes {
     | '/(errors)/404'
     | '/(errors)/500'
     | '/(errors)/503'
+    | '/_authenticated/article-management'
     | '/_authenticated/chat2link'
+    | '/articles/$slug'
     | '/oauth/$provider'
     | '/about/'
+    | '/articles/'
     | '/pricing/'
     | '/rankings/'
     | '/setup/'
@@ -817,8 +854,10 @@ export interface RootRouteChildren {
   errors404Route: typeof errors404Route
   errors500Route: typeof errors500Route
   errors503Route: typeof errors503Route
+  ArticlesSlugRoute: typeof ArticlesSlugRoute
   OauthProviderRoute: typeof OauthProviderRoute
   AboutIndexRoute: typeof AboutIndexRoute
+  ArticlesIndexRoute: typeof ArticlesIndexRoute
   PricingIndexRoute: typeof PricingIndexRoute
   RankingsIndexRoute: typeof RankingsIndexRoute
   SetupIndexRoute: typeof SetupIndexRoute
@@ -946,6 +985,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof errors503RouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/article-management': {
+      id: '/_authenticated/article-management'
+      path: '/article-management'
+      fullPath: '/article-management'
+      preLoaderRoute: typeof AuthenticatedArticleManagementRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/chat2link': {
       id: '/_authenticated/chat2link'
       path: '/chat2link'
@@ -965,6 +1011,20 @@ declare module '@tanstack/react-router' {
       path: '/about'
       fullPath: '/about/'
       preLoaderRoute: typeof AboutIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/articles/': {
+      id: '/articles/'
+      path: '/articles'
+      fullPath: '/articles/'
+      preLoaderRoute: typeof ArticlesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/articles/$slug': {
+      id: '/articles/$slug'
+      path: '/articles/$slug'
+      fullPath: '/articles/$slug'
+      preLoaderRoute: typeof ArticlesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/oauth/$provider': {
@@ -1362,6 +1422,7 @@ const AuthenticatedSystemSettingsRouteRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedSystemSettingsRouteRoute: typeof AuthenticatedSystemSettingsRouteRouteWithChildren
+  AuthenticatedArticleManagementRoute: typeof AuthenticatedArticleManagementRoute
   AuthenticatedChat2linkRoute: typeof AuthenticatedChat2linkRoute
   AuthenticatedChatChatIdRoute: typeof AuthenticatedChatChatIdRoute
   AuthenticatedDashboardSectionRoute: typeof AuthenticatedDashboardSectionRoute
@@ -1388,6 +1449,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSystemSettingsRouteRoute:
     AuthenticatedSystemSettingsRouteRouteWithChildren,
+  AuthenticatedArticleManagementRoute: AuthenticatedArticleManagementRoute,
   AuthenticatedChat2linkRoute: AuthenticatedChat2linkRoute,
   AuthenticatedChatChatIdRoute: AuthenticatedChatChatIdRoute,
   AuthenticatedDashboardSectionRoute: AuthenticatedDashboardSectionRoute,
@@ -1426,8 +1488,10 @@ const rootRouteChildren: RootRouteChildren = {
   errors404Route: errors404Route,
   errors500Route: errors500Route,
   errors503Route: errors503Route,
+  ArticlesSlugRoute: ArticlesSlugRoute,
   OauthProviderRoute: OauthProviderRoute,
   AboutIndexRoute: AboutIndexRoute,
+  ArticlesIndexRoute: ArticlesIndexRoute,
   PricingIndexRoute: PricingIndexRoute,
   RankingsIndexRoute: RankingsIndexRoute,
   SetupIndexRoute: SetupIndexRoute,

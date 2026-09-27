@@ -100,5 +100,7 @@ export function useTopNavLinks(): TopNavLink[] {
     links.push({ title: t('About'), href: '/about' })
   }
 
+  links.push({ title: t('News'), href: '/articles' })
+
   return links
 }
