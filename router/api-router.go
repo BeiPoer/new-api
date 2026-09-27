@@ -31,6 +31,8 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/user-agreement", controller.GetUserAgreement)
 		apiRouter.GET("/privacy-policy", controller.GetPrivacyPolicy)
 		apiRouter.GET("/about", controller.GetAbout)
+		apiRouter.GET("/articles", controller.GetArticles)
+		apiRouter.GET("/articles/:slug", controller.GetArticle)
 		//apiRouter.GET("/midjourney", controller.GetMidjourney)
 		apiRouter.GET("/home_page_content", controller.GetHomePageContent)
 		apiRouter.GET("/pricing", middleware.HeaderNavModuleAuth("pricing"), controller.GetPricing)
@@ -229,6 +231,17 @@ func SetApiRouter(router *gin.Engine) {
 			optionRoute.POST("/waffo-pancake/save", controller.SaveWaffoPancake)
 			optionRoute.POST("/waffo-pancake/subscription-product", controller.CreateWaffoPancakeSubscriptionProduct)
 			optionRoute.GET("/waffo-pancake/subscription-product-options", controller.ListWaffoPancakeSubscriptionProductOptions)
+		}
+		articleAdminRoute := apiRouter.Group("/admin/articles")
+		articleAdminRoute.Use(middleware.RootAuth())
+		{
+		articleAdminRoute.GET("", controller.AdminListArticles)
+		articleAdminRoute.GET("/ai-config", controller.GetArticleAIConfig)
+		articleAdminRoute.PUT("/ai-config", controller.UpdateArticleAIConfig)
+		articleAdminRoute.POST("/generate-metadata", controller.GenerateArticleAIMetadata)
+			articleAdminRoute.POST("", controller.AdminCreateArticle)
+			articleAdminRoute.PUT("/:id", controller.AdminUpdateArticle)
+			articleAdminRoute.DELETE("/:id", controller.AdminDeleteArticle)
 		}
 
 		// Custom OAuth provider management (root only)

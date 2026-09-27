@@ -36,6 +36,7 @@ import {
   User,
   Users,
   Wallet,
+  Newspaper,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
@@ -161,6 +162,12 @@ export function useSidebarData(): SidebarData {
             title: t('System Info'),
             url: '/system-info',
             icon: ServerCog,
+            requiredRole: ROLE.SUPER_ADMIN,
+          },
+          {
+            title: t('Article Management'),
+            url: '/article-management',
+            icon: Newspaper,
             requiredRole: ROLE.SUPER_ADMIN,
           },
           {
