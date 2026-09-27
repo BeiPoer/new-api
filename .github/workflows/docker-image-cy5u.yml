@@ -37,11 +37,10 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Determine cy5u version
+      - name: Determine cy5u image tag
         id: version
         run: |
           VERSION="cy5u-$(date +'%Y%m%d')-$(git rev-parse --short HEAD)"
-          echo "$VERSION" > VERSION
           echo "value=$VERSION" >> $GITHUB_OUTPUT
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Publishing version: $VERSION for ${{ matrix.arch }}"
