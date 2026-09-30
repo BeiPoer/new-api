@@ -14,6 +14,8 @@ import { getAdminArticles, createArticle, deleteArticle, updateArticle, getArtic
 import { handleServerError } from '@/lib/handle-server-error'
 import { requireServerSuccess } from '@/lib/server-error-message'
 import dayjs from '@/lib/dayjs'
+import { ROLE } from '@/lib/roles'
+import { useAuthStore } from '@/stores/auth-store'
 
 import { SettingsSection } from '../components/settings-section'
 
@@ -35,13 +37,14 @@ function toInputValue(value: string) {
 
 export function ArticlesSection() {
   const { t } = useTranslation()
+  const canConfigureAI = useAuthStore((state) => state.auth.user?.role === ROLE.SUPER_ADMIN)
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState<Article | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [form, setForm] = useState<ArticleInput>(emptyArticle)
   const [aiConfig, setAiConfig] = useState({ api_url: '', api_key: '', model: 'gpt-4o-mini', has_api_key: false })
   const [aiGenerating, setAiGenerating] = useState(false)
-  const aiConfigQuery = useQuery({ queryKey: ['article-ai-config'], queryFn: async () => requireServerSuccess(await getArticleAIConfig()) })
+  const aiConfigQuery = useQuery({ queryKey: ['article-ai-config'], queryFn: async () => requireServerSuccess(await getArticleAIConfig()), enabled: canConfigureAI })
   const query = useQuery({
     queryKey: ['admin-articles'],
     queryFn: async () => requireServerSuccess(await getAdminArticles()),
@@ -87,6 +90,7 @@ export function ArticlesSection() {
 
   return (
     <SettingsSection title={t('Article Management')}>
+      {canConfigureAI && (
       <div className='space-y-3 rounded-lg border p-4'>
         <h4 className='font-medium'>{t('AI metadata generation')}</h4>
         <div className='grid gap-3 md:grid-cols-3'>
@@ -96,6 +100,7 @@ export function ArticlesSection() {
         </div>
         <Button size='sm' variant='secondary' disabled={saveAIConfig.isPending} onClick={() => saveAIConfig.mutate({ api_url: aiConfig.api_url || aiConfigQuery.data?.data.api_url || '', api_key: aiConfig.api_key || undefined, model: aiConfig.model || aiConfigQuery.data?.data.model || 'gpt-4o-mini' })}>{t('Save AI settings')}</Button>
       </div>
+      )}
       <div className='flex items-center justify-between'>
         <Button onClick={openCreate} size='sm'><Plus className='mr-2 size-4' />{t('Add Article')}</Button>
       </div>

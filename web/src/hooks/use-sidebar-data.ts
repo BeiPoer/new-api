@@ -168,7 +168,7 @@ export function useSidebarData(): SidebarData {
             title: t('Article Management'),
             url: '/article-management',
             icon: Newspaper,
-            requiredRole: ROLE.SUPER_ADMIN,
+            requiredRole: ROLE.ADMIN,
           },
           {
             title: t('Task Plugins'),

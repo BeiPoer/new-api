@@ -232,17 +232,7 @@ func SetApiRouter(router *gin.Engine) {
 			optionRoute.POST("/waffo-pancake/subscription-product", controller.CreateWaffoPancakeSubscriptionProduct)
 			optionRoute.GET("/waffo-pancake/subscription-product-options", controller.ListWaffoPancakeSubscriptionProductOptions)
 		}
-		articleAdminRoute := apiRouter.Group("/admin/articles")
-		articleAdminRoute.Use(middleware.RootAuth())
-		{
-		articleAdminRoute.GET("", controller.AdminListArticles)
-		articleAdminRoute.GET("/ai-config", controller.GetArticleAIConfig)
-		articleAdminRoute.PUT("/ai-config", controller.UpdateArticleAIConfig)
-		articleAdminRoute.POST("/generate-metadata", controller.GenerateArticleAIMetadata)
-			articleAdminRoute.POST("", controller.AdminCreateArticle)
-			articleAdminRoute.PUT("/:id", controller.AdminUpdateArticle)
-			articleAdminRoute.DELETE("/:id", controller.AdminDeleteArticle)
-		}
+		registerArticleRoutes(apiRouter)
 
 		// Custom OAuth provider management (root only)
 		customOAuthRoute := apiRouter.Group("/custom-oauth-provider")
@@ -448,4 +438,17 @@ func SetApiRouter(router *gin.Engine) {
 			deploymentsRoute.DELETE("/:id", controller.DeleteDeployment)
 		}
 	}
+}
+
+func registerArticleRoutes(apiRouter *gin.RouterGroup) {
+	articleAdminRoute := apiRouter.Group("/admin/articles", middleware.AdminAuth())
+	articleAdminRoute.GET("", controller.AdminListArticles)
+	articleAdminRoute.POST("", controller.AdminCreateArticle)
+	articleAdminRoute.POST("/generate-metadata", controller.GenerateArticleAIMetadata)
+	articleAdminRoute.PUT("/:id", controller.AdminUpdateArticle)
+	articleAdminRoute.DELETE("/:id", controller.AdminDeleteArticle)
+
+	articleAIConfigRoute := apiRouter.Group("/admin/articles/ai-config", middleware.RootAuth())
+	articleAIConfigRoute.GET("", controller.GetArticleAIConfig)
+	articleAIConfigRoute.PUT("", controller.UpdateArticleAIConfig)
 }
