@@ -29,7 +29,12 @@ function ArticlePage() {
     const setMeta = (name: string, content: string, property = false) => {
       const selector = property ? `meta[property="${name}"]` : `meta[name="${name}"]`
       let element = document.head.querySelector<HTMLMetaElement>(selector)
-      if (!element) { element = document.createElement('meta'); property ? element.setAttribute('property', name) : element.setAttribute('name', name); document.head.appendChild(element) }
+      if (!element) {
+        element = document.createElement('meta')
+        if (property) element.setAttribute('property', name)
+        else element.setAttribute('name', name)
+        document.head.appendChild(element)
+      }
       element.content = content
     }
     setMeta('description', description)
@@ -55,7 +60,7 @@ function ArticlePage() {
             <div>
               <h1 className='text-3xl font-semibold'>{article.title}</h1>
               <time className='text-muted-foreground mt-2 block text-sm'>
-                {dayjs(query.data.data.publish_time).format('YYYY-MM-DD')}
+                {dayjs(article.publish_time).format('YYYY-MM-DD')}
               </time>
             </div>
             <HtmlContent content={article.content} variant='isolated' />
