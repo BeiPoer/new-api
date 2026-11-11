@@ -26,6 +26,8 @@ import {
   calculateAlipayAmount,
   calculateAmount,
   calculateStripeAmount,
+  calculateBinancePayAmount,
+  requestBinancePayPayment,
   calculateWaffoAmount,
   calculateWaffoPancakeAmount,
   requestAlipayPayment,
@@ -36,6 +38,7 @@ import {
 import {
   isEnterpriseAlipayPayment,
   isStripePayment,
+  isBinancePayPayment,
   isWaffoPayment,
   isWaffoPancakePayment,
   submitPaymentForm,
@@ -46,6 +49,7 @@ import type {
   AmountResponse,
   PaymentResponse,
   StripePaymentResponse,
+  BinancePayPaymentResponse,
 } from '../types'
 
 export interface AlipayQRCodePaymentState {
@@ -64,6 +68,7 @@ export interface PaymentAmountCalculators {
   regular: AmountCalculator
   alipay: AmountCalculator
   stripe: AmountCalculator
+  binancePay: AmountCalculator
   waffo: AmountCalculator
   waffoPancake: AmountCalculator
 }
@@ -72,6 +77,7 @@ const defaultPaymentAmountCalculators: PaymentAmountCalculators = {
   regular: calculateAmount,
   alipay: calculateAlipayAmount,
   stripe: calculateStripeAmount,
+  binancePay: calculateBinancePayAmount,
   waffo: calculateWaffoAmount,
   waffoPancake: calculateWaffoPancakeAmount,
 }
@@ -89,6 +95,8 @@ export async function requestPaymentAmount(
     request.direct_cny = directCNY
   } else if (isStripePayment(paymentType)) {
     calculator = calculators.stripe
+  } else if (isBinancePayPayment(paymentType)) {
+    calculator = calculators.binancePay
   } else if (isWaffoPayment(paymentType)) {
     calculator = calculators.waffo
   } else if (isWaffoPancakePayment(paymentType)) {
@@ -141,15 +149,21 @@ export function usePayment() {
 
         const isAlipay = isEnterpriseAlipayPayment(paymentType)
         const isStripe = isStripePayment(paymentType)
+        const isBinancePay = isBinancePayPayment(paymentType)
         const amount = Math.floor(topupAmount)
 
-        let response: PaymentResponse | StripePaymentResponse
+        let response:
+          | PaymentResponse
+          | StripePaymentResponse
+          | BinancePayPaymentResponse
         if (isAlipay) {
           response = await requestAlipayPayment({
             amount,
             payment_method: 'enterprise_alipay',
             direct_cny: directCNY,
           })
+        } else if (isBinancePay) {
+          response = await requestBinancePayPayment({ amount })
         } else if (isStripe) {
           response = await requestStripePayment({
             amount,
@@ -180,16 +194,26 @@ export function usePayment() {
           }
         }
 
-        if (isStripe) {
-          const stripeResponse = response as StripePaymentResponse
-          if (stripeResponse.data?.pay_link) {
-            window.open(stripeResponse.data.pay_link, '_blank')
+        if (isStripe || isBinancePay) {
+          const checkoutResponse = response as
+            | StripePaymentResponse
+            | BinancePayPaymentResponse
+          if (checkoutResponse.data?.pay_link) {
+            if (isBinancePay) {
+              window.open(
+                checkoutResponse.data.pay_link,
+                '_blank',
+                'noopener,noreferrer'
+              )
+            } else {
+              window.open(checkoutResponse.data.pay_link, '_blank')
+            }
             toast.success(i18next.t('Redirecting to payment page...'))
             return true
           }
         }
 
-        if (!isStripe) {
+        if (!isStripe && !isBinancePay) {
           const paymentResponse = response as PaymentResponse
           if (paymentResponse.data && paymentResponse.url) {
             submitPaymentForm(paymentResponse.url, paymentResponse.data)

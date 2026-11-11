@@ -76,6 +76,7 @@ function getEpayMethods(payMethods: PaymentMethod[] = []): PaymentMethod[] {
     (m) =>
       m?.type &&
       m.type !== 'stripe' &&
+      m.type !== 'binance_pay' &&
       m.type !== 'creem' &&
       m.type !== 'enterprise_alipay'
   )

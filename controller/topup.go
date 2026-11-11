@@ -3,6 +3,7 @@ package controller
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -27,11 +28,31 @@ func GetTopUpInfo(c *gin.Context) {
 	enableOnlineTopUp := isEpayTopUpEnabled()
 	enableStripeTopUp := isStripeTopUpEnabled()
 	enableAlipay := complianceConfirmed && isAlipayEnabled()
+	binancePayConfig := setting.GetBinancePayConfig()
+	enableBinancePay := isBinancePayTopUpEnabled(c.GetInt("id"), binancePayConfig)
+	binancePayMinTopUp := binancePayConfig.MinTopUp
+	if enableBinancePay && operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeTokens {
+		if common.QuotaPerUnit <= 0 || math.IsNaN(common.QuotaPerUnit) || math.IsInf(common.QuotaPerUnit, 0) {
+			enableBinancePay = false
+		} else {
+			var err error
+			binancePayMinTopUp, err = common.WalletQuotaFromDecimalStrict(
+				decimal.NewFromInt(int64(binancePayConfig.MinTopUp)).Mul(decimal.NewFromFloat(common.QuotaPerUnit)),
+			)
+			if err != nil || binancePayMinTopUp <= 0 {
+				enableBinancePay = false
+			}
+		}
+	}
 
 	// 仅在对应渠道实际启用时返回其支付方式，避免前端展示不可用的默认渠道。
 	payMethods := make([]map[string]string, 0, len(operation_setting.PayMethods)+4)
 	if enableOnlineTopUp {
 		for _, method := range operation_setting.PayMethods {
+			// This provider is managed by its own configuration and allowlist.
+			if method["type"] == model.PaymentMethodBinancePay {
+				continue
+			}
 			cloned := make(map[string]string, len(method))
 			for key, value := range method {
 				cloned[key] = value
@@ -98,6 +119,8 @@ func GetTopUpInfo(c *gin.Context) {
 	}
 
 	data := gin.H{
+		"enable_binance_pay_topup":         enableBinancePay,
+		"binance_pay_min_topup":            binancePayMinTopUp,
 		"enable_online_topup":              enableOnlineTopUp,
 		"enable_alipay_topup":              enableAlipay,
 		"enable_alipay_direct_cny":         shouldUseAlipayDirectCNYMode(enableAlipay),
@@ -126,6 +149,13 @@ func GetTopUpInfo(c *gin.Context) {
 		"discount":                operation_setting.GetPaymentSetting().AmountDiscount,
 		"payment_notice":          operation_setting.GetPaymentSetting().PaymentNotice,
 		"topup_link":              common.TopUpLink,
+	}
+	if enableBinancePay {
+		payMethods = append(payMethods, map[string]string{
+			"name": "Binance Pay", "type": model.PaymentMethodBinancePay,
+			"color": "#F0B90B", "min_topup": strconv.Itoa(binancePayMinTopUp),
+		})
+		data["pay_methods"] = payMethods
 	}
 	common.ApiSuccess(c, data)
 }
@@ -315,7 +345,7 @@ func RequestEpay(c *gin.Context) {
 		return
 	}
 
-	if !operation_setting.ContainsPayMethod(req.PaymentMethod) {
+	if req.PaymentMethod == model.PaymentMethodBinancePay || !operation_setting.ContainsPayMethod(req.PaymentMethod) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "支付方式不存在"})
 		return
 	}

@@ -32,6 +32,7 @@ const (
 	PaymentMethodWaffo        = "waffo"
 	PaymentMethodWaffoPancake = "waffo_pancake"
 	PaymentMethodBalance      = "balance"
+	PaymentMethodBinancePay   = "binance_pay"
 )
 
 const (
@@ -42,6 +43,7 @@ const (
 	PaymentProviderWaffoPancake = "waffo_pancake"
 	PaymentProviderAlipay       = "enterprise_alipay"
 	PaymentProviderBalance      = "balance"
+	PaymentProviderBinancePay   = "binance_pay"
 )
 
 var (
@@ -57,6 +59,54 @@ func (topUp *TopUp) Insert() error {
 	var err error
 	err = DB.Create(topUp).Error
 	return err
+}
+
+// RechargeBinancePay verifies the paid amount inside the same transaction that
+// locks the order and credits the wallet. Duplicate notifications credit once.
+func RechargeBinancePay(tradeNo, currency string, paidAmount decimal.Decimal, callerIP string) error {
+	if tradeNo == "" || currency != "USDT" || !paidAmount.IsPositive() {
+		return errors.New("invalid Binance Pay payment")
+	}
+	var topUp TopUp
+	var quotaToAdd int
+	alreadyDone := false
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		if err := lockForUpdate(tx).Where("trade_no = ?", tradeNo).First(&topUp).Error; err != nil {
+			return err
+		}
+		if topUp.PaymentProvider != PaymentProviderBinancePay || topUp.PaymentMethod != PaymentMethodBinancePay {
+			return ErrPaymentMethodMismatch
+		}
+		if !paidAmount.Equal(decimal.NewFromFloat(topUp.Money)) {
+			return errors.New("Binance Pay payment amount mismatch")
+		}
+		if topUp.Status == common.TopUpStatusSuccess {
+			alreadyDone = true
+			return nil
+		}
+		if topUp.Status != common.TopUpStatusPending {
+			return ErrTopUpStatusInvalid
+		}
+		var err error
+		quotaToAdd, err = common.WalletQuotaFromDecimalStrict(
+			decimal.NewFromInt(topUp.Amount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)),
+		)
+		if err != nil || quotaToAdd <= 0 {
+			return ErrInvalidTopUpQuota
+		}
+		if err := creditTopUpQuota(tx, topUp.UserId, quotaToAdd, nil); err != nil {
+			return err
+		}
+		topUp.Status = common.TopUpStatusSuccess
+		topUp.CompleteTime = common.GetTimestamp()
+		return tx.Save(&topUp).Error
+	})
+	if err != nil || alreadyDone {
+		return err
+	}
+	syncCreditUserQuotaCache(topUp.UserId, quotaToAdd, "Binance Pay topup")
+	RecordTopupLog(topUp.UserId, fmt.Sprintf("Binance Pay充值成功，充值额度: %v，支付金额: %.2f USDT", logger.FormatQuota(quotaToAdd), topUp.Money), callerIP, PaymentMethodBinancePay, PaymentProviderBinancePay)
+	return nil
 }
 
 func topUpQuotaMaxCurrent(creditedQuota int) (int, error) {
