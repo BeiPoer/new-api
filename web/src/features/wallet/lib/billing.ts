@@ -60,6 +60,7 @@ export function getStatusConfig(status: TopupStatus): StatusConfig {
  */
 export const PAYMENT_METHOD_NAMES: Record<string, string> = {
   stripe: 'Stripe',
+  binance_pay: 'Binance Pay',
   alipay: 'Alipay',
   enterprise_alipay: 'Alipay',
   enterprise_alipay_cny: 'Alipay',

@@ -29,6 +29,7 @@ import type {
   AmountResponse,
   PaymentResponse,
   StripePaymentResponse,
+  BinancePayPaymentResponse,
   AffiliateCodeResponse,
   AffiliateTransferResponse,
   BillingHistoryResponse,
@@ -91,6 +92,20 @@ export async function calculateStripeAmount(
   const res = await api.post('/api/user/stripe/amount', request, {
     skipBusinessError: true,
   } as Record<string, unknown>)
+  return res.data
+}
+
+export async function calculateBinancePayAmount(
+  request: AmountRequest
+): Promise<AmountResponse> {
+  const res = await api.post('/api/user/binance-pay/amount', request)
+  return res.data
+}
+
+export async function requestBinancePayPayment(
+  request: AmountRequest
+): Promise<BinancePayPaymentResponse> {
+  const res = await api.post('/api/user/binance-pay/pay', request)
   return res.data
 }
 

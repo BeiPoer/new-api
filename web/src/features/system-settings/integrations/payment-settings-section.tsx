@@ -67,6 +67,8 @@ import {
 } from './alipay-settings-section'
 import { AmountDiscountVisualEditor } from './amount-discount-visual-editor'
 import { AmountOptionsVisualEditor } from './amount-options-visual-editor'
+import { BinancePaySettingsSection } from './binance-pay-settings-section'
+import { isValidBinancePayUserIDs } from './binance-pay-validation'
 import { CreemProductsVisualEditor } from './creem-products-visual-editor'
 import { PaymentMethodsVisualEditor } from './payment-methods-visual-editor'
 import {
@@ -121,6 +123,22 @@ const paymentSchema = z.object({
   }, 'Provide a valid callback URL starting with http:// or https://'),
   EpayId: z.string(),
   EpayKey: z.string(),
+  BinancePayEnabled: z.boolean(),
+  BinancePayAPIKey: z.string(),
+  BinancePaySecretKey: z.string(),
+  BinancePayAllowedUserIDs: z
+    .string()
+    .refine(
+      isValidBinancePayUserIDs,
+      'Enter a JSON array of positive user IDs, for example [1, 42]'
+    ),
+  BinancePayUnitPrice: z.coerce
+    .number()
+    .positive('Enter a value greater than 0'),
+  BinancePayMinTopUp: z.coerce
+    .number()
+    .int('Enter a whole number')
+    .min(1, 'Enter a value of at least 1'),
   AlipayEnabled: z.boolean(),
   AlipayAppID: z.string(),
   AlipayPrivateKey: z.string(),
@@ -474,6 +492,12 @@ export function PaymentSettingsSection({
       PayAddress: removeTrailingSlash(values.PayAddress),
       EpayId: values.EpayId.trim(),
       EpayKey: values.EpayKey.trim(),
+      BinancePayEnabled: values.BinancePayEnabled,
+      BinancePayAPIKey: values.BinancePayAPIKey.trim(),
+      BinancePaySecretKey: values.BinancePaySecretKey.trim(),
+      BinancePayAllowedUserIDs: values.BinancePayAllowedUserIDs.trim(),
+      BinancePayUnitPrice: values.BinancePayUnitPrice,
+      BinancePayMinTopUp: values.BinancePayMinTopUp,
       AlipayEnabled: values.AlipayEnabled,
       AlipayAppID: values.AlipayAppID.trim(),
       AlipayPrivateKey: values.AlipayPrivateKey.trim(),
@@ -526,6 +550,13 @@ export function PaymentSettingsSection({
       PayAddress: removeTrailingSlash(initialRef.current.PayAddress),
       EpayId: initialRef.current.EpayId.trim(),
       EpayKey: initialRef.current.EpayKey.trim(),
+      BinancePayEnabled: initialRef.current.BinancePayEnabled,
+      BinancePayAPIKey: initialRef.current.BinancePayAPIKey.trim(),
+      BinancePaySecretKey: initialRef.current.BinancePaySecretKey.trim(),
+      BinancePayAllowedUserIDs:
+        initialRef.current.BinancePayAllowedUserIDs.trim(),
+      BinancePayUnitPrice: initialRef.current.BinancePayUnitPrice,
+      BinancePayMinTopUp: initialRef.current.BinancePayMinTopUp,
       AlipayEnabled: initialRef.current.AlipayEnabled,
       AlipayAppID: initialRef.current.AlipayAppID.trim(),
       AlipayPrivateKey: initialRef.current.AlipayPrivateKey.trim(),
@@ -581,6 +612,25 @@ export function PaymentSettingsSection({
     }
 
     const updates: Array<{ key: string; value: string | number | boolean }> = []
+
+    for (const key of [
+      'BinancePayAPIKey',
+      'BinancePaySecretKey',
+      'BinancePayAllowedUserIDs',
+      'BinancePayUnitPrice',
+      'BinancePayMinTopUp',
+      'BinancePayEnabled',
+    ] as const) {
+      if (
+        (key === 'BinancePayAPIKey' || key === 'BinancePaySecretKey') &&
+        !sanitized[key]
+      ) {
+        continue
+      }
+      if (sanitized[key] !== initial[key]) {
+        updates.push({ key, value: sanitized[key] })
+      }
+    }
 
     if (sanitized.PayAddress !== initial.PayAddress) {
       updates.push({ key: 'PayAddress', value: sanitized.PayAddress })
@@ -1025,18 +1075,32 @@ export function PaymentSettingsSection({
           />
           <Tabs defaultValue='general' className='min-w-0'>
             <div className='overflow-x-auto pb-1'>
-              <TabsList className='grid min-w-[52rem] grid-cols-7'>
+              <TabsList className='grid min-w-[60rem] grid-cols-8'>
                 <TabsTrigger value='general'>{t('General')}</TabsTrigger>
                 <TabsTrigger value='epay'>Epay</TabsTrigger>
                 <TabsTrigger value='alipay'>
                   {t('Enterprise Alipay')}
                 </TabsTrigger>
                 <TabsTrigger value='stripe'>{t('Stripe')}</TabsTrigger>
+                <TabsTrigger value='binance-pay'>
+                  {t('Binance Pay')}
+                </TabsTrigger>
                 <TabsTrigger value='creem'>Creem</TabsTrigger>
                 <TabsTrigger value='waffo-pancake'>Waffo Pancake</TabsTrigger>
                 <TabsTrigger value='waffo'>Waffo</TabsTrigger>
               </TabsList>
             </div>
+
+            <TabsContent
+              value='binance-pay'
+              className={paymentTabContentClassName}
+            >
+              <BinancePaySettingsSection
+                values={currentFormValues}
+                errors={errors}
+                onValueChange={setPaymentValue}
+              />
+            </TabsContent>
 
             <TabsContent value='general' className={paymentTabContentClassName}>
               <div className='space-y-4'>

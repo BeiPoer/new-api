@@ -29,6 +29,7 @@ describe('payment amount routing', () => {
         calls.push('regular')
         return { success: true, data: '1' }
       },
+      binancePay: async () => ({ success: true, data: '6' }),
       alipay: async () => {
         calls.push('alipay')
         return { success: true, data: '5' }
@@ -58,6 +59,7 @@ describe('payment amount routing', () => {
       PAYMENT_TYPES.ENTERPRISE_ALIPAY,
       {
         regular: async () => ({ success: true, data: '1' }),
+        binancePay: async () => ({ success: true, data: '6' }),
         alipay: async (value) => {
           request = value
           return { success: true, data: '120' }

@@ -308,6 +308,12 @@ export type BillingSettings = {
   PayAddress: string
   EpayId: string
   EpayKey: string
+  BinancePayEnabled: boolean
+  BinancePayAPIKey: string
+  BinancePaySecretKey: string
+  BinancePayAllowedUserIDs: string
+  BinancePayUnitPrice: number
+  BinancePayMinTopUp: number
   AlipayEnabled: boolean
   AlipayAppID: string
   AlipayPrivateKey: string

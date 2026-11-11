@@ -75,6 +75,10 @@ export function isStripePayment(paymentType: string): boolean {
   return paymentType === PAYMENT_TYPES.STRIPE
 }
 
+export function isBinancePayPayment(paymentType: string): boolean {
+  return paymentType === PAYMENT_TYPES.BINANCE_PAY
+}
+
 /**
  * Check if payment method is direct enterprise Alipay.
  */
@@ -147,6 +151,10 @@ export function getDefaultPaymentType(topupInfo: TopupInfo | null): string {
     return PAYMENT_TYPES.STRIPE
   }
 
+  if (topupInfo.enable_binance_pay_topup) {
+    return PAYMENT_TYPES.BINANCE_PAY
+  }
+
   if (topupInfo.enable_waffo_topup) {
     return PAYMENT_TYPES.WAFFO
   }
@@ -176,6 +184,10 @@ export function getMinTopupAmount(topupInfo: TopupInfo | null): number {
 
   if (topupInfo.enable_stripe_topup) {
     return topupInfo.stripe_min_topup
+  }
+
+  if (topupInfo.enable_binance_pay_topup) {
+    return topupInfo.binance_pay_min_topup || DEFAULT_MIN_TOPUP
   }
 
   if (topupInfo.enable_waffo_topup) {
