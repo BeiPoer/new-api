@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { getRouteApi, useNavigate } from '@tanstack/react-router'
 import { Eye, EyeOff } from 'lucide-react'
 import { useState, useCallback, useMemo, lazy, Suspense } from 'react'
@@ -64,6 +46,8 @@ const LOG_STAT_CARD_FALLBACK_KEYS = [
   'count',
   'quota',
   'tokens',
+  'cache-read',
+  'cache-creation',
   'average-rpm',
   'average-tpm',
 ] as const
@@ -116,12 +100,12 @@ const LazyFlowCharts = lazy(() =>
 function LogStatCardsFallback() {
   return (
     <div className='overflow-hidden rounded-lg border'>
-      <div className='divide-border/60 grid grid-cols-2 divide-x sm:grid-cols-3 lg:grid-cols-5'>
+      <div className='divide-border/60 grid min-w-0 grid-cols-2 divide-x sm:grid-cols-3 lg:grid-cols-7'>
         {LOG_STAT_CARD_FALLBACK_KEYS.map((key, index) => (
           <div
             key={key}
             className={cn(
-              'px-2.5 py-1.5 sm:px-5 sm:py-4',
+              'min-w-0 px-2.5 py-1.5 sm:px-3 sm:py-4 xl:px-4',
               index === LOG_STAT_CARD_FALLBACK_KEYS.length - 1 &&
                 'col-span-2 sm:col-span-1'
             )}
@@ -134,6 +118,9 @@ function LogStatCardsFallback() {
             <Skeleton className='mt-1 hidden h-3.5 w-28 md:block' />
           </div>
         ))}
+      </div>
+      <div className='border-t px-3 py-2'>
+        <Skeleton className='h-4 w-full max-w-md' />
       </div>
     </div>
   )

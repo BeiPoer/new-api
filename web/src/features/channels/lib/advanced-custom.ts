@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import type {
   AdvancedCustomAuthType,
   AdvancedCustomConfig,
@@ -47,6 +29,11 @@ export const ADVANCED_CUSTOM_CONVERTER_OPTIONS: Array<{
     triggerLabel: 'To OpenAI Chat',
   },
   {
+    value: 'claude_messages_to_openai_responses',
+    label: 'Anthropic Messages to OpenAI Responses',
+    triggerLabel: 'To OpenAI Responses',
+  },
+  {
     value: 'openai_chat_completions_to_anthropic_messages',
     label: 'OpenAI Chat to Anthropic Messages',
     triggerLabel: 'To Anthropic Messages',
@@ -70,6 +57,11 @@ export const ADVANCED_CUSTOM_CONVERTER_OPTIONS: Array<{
     value: 'gemini_generate_content_to_openai_chat_completions',
     label: 'Gemini Generate Content to OpenAI Chat',
     triggerLabel: 'To OpenAI Chat',
+  },
+  {
+    value: 'gemini_generate_content_to_openai_responses',
+    label: 'Gemini Generate Content to OpenAI Responses',
+    triggerLabel: 'To OpenAI Responses',
   },
   {
     value: 'openai_chat_completions_to_gemini_generate_content',
@@ -165,6 +157,14 @@ export const ADVANCED_CUSTOM_INCOMING_PATH_OPTIONS: AdvancedCustomIncomingPathOp
     {
       value: '/v1beta/models/{model}:batchEmbedContents',
       label: 'Gemini Batch Embed Contents',
+    },
+    {
+      value: '/v1/tools/search',
+      label: 'DeepSeek Search',
+    },
+    {
+      value: '/v1/tools/fetch',
+      label: 'DeepSeek Fetch',
     },
   ]
 
@@ -449,7 +449,11 @@ export function getAdvancedCustomConverterDefaults(
   ) {
     return { upstream_path: openAIChatPath, auth: bearerHeaderAuth() }
   }
-  if (converter === 'openai_chat_completions_to_openai_responses') {
+  if (
+    converter === 'openai_chat_completions_to_openai_responses' ||
+    converter === 'claude_messages_to_openai_responses' ||
+    converter === 'gemini_generate_content_to_openai_responses'
+  ) {
     return { upstream_path: openAIResponsesPath, auth: bearerHeaderAuth() }
   }
   if (converter === 'openai_chat_completions_to_anthropic_messages') {
@@ -924,7 +928,10 @@ function isConverterPathAllowed(
 ): boolean {
   if (converter === 'none') return true
   if (incomingPath === '/v1/alpha/search') return false
-  if (converter === 'anthropic_messages_to_openai_chat_completions') {
+  if (
+    converter === 'anthropic_messages_to_openai_chat_completions' ||
+    converter === 'claude_messages_to_openai_responses'
+  ) {
     return incomingPath === '/v1/messages'
   }
   if (

@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
@@ -76,10 +58,13 @@ function resizeHandle(direction: string) {
   return handle
 }
 
-test('dragging the bottom-right corner grows both dimensions from the rendered size and persists them', () => {
+test('the visible resize hint leads to a bottom-right grip that grows both dimensions and persists them', () => {
   renderWindow({ storageKey: 'scratch' })
   const window_ = screen.getByRole('complementary', { name: 'Scratch pad' })
   const handle = resizeHandle('se')
+  expect(screen.getByText('Drag to resize')).toBeVisible()
+  expect(handle.querySelector('svg')).toBeVisible()
+  expect(handle).toHaveClass('size-8', 'cursor-nwse-resize')
   fireEvent.pointerDown(handle, {
     button: 0,
     pointerId: 3,
@@ -145,11 +130,13 @@ test('collapses to a pill that keeps the title and reopens, and the close contro
   ).not.toBeInTheDocument()
   expect(screen.getByText('Scratch pad')).toBeVisible()
   expect(screen.queryByText('body')).not.toBeInTheDocument()
+  expect(screen.queryByText('Drag to resize')).not.toBeInTheDocument()
 
   await user.click(screen.getByRole('button', { name: 'Expand panel' }))
   expect(
     screen.getByRole('complementary', { name: 'Scratch pad' })
   ).toBeVisible()
+  expect(screen.getByText('Drag to resize')).toBeVisible()
   await user.click(screen.getByRole('button', { name: 'Close panel' }))
   expect(onClose).toHaveBeenCalledTimes(1)
 })

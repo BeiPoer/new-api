@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import type { QuotaDataItem } from '@/features/dashboard/types'
 
 /**
@@ -37,11 +19,27 @@ export function safeDivide(
  */
 export function calculateDashboardStats(data: QuotaDataItem[]) {
   return data.reduce(
-    (acc, item) => ({
-      totalQuota: acc.totalQuota + (Number(item.quota) || 0),
-      totalCount: acc.totalCount + (Number(item.count) || 0),
-      totalTokens: acc.totalTokens + (Number(item.token_used) || 0),
-    }),
-    { totalQuota: 0, totalCount: 0, totalTokens: 0 }
+    (acc, item) => {
+      const cacheRead = item.cache_read_tokens ?? 0
+      const cacheCreation = item.cache_creation_tokens ?? 0
+      return {
+        totalQuota: acc.totalQuota + (Number(item.quota) || 0),
+        totalCount: acc.totalCount + (Number(item.count) || 0),
+        totalTokens: acc.totalTokens + (Number(item.token_used) || 0),
+        totalCacheReadTokens:
+          acc.totalCacheReadTokens +
+          (Number.isFinite(cacheRead) ? Math.max(0, cacheRead) : 0),
+        totalCacheCreationTokens:
+          acc.totalCacheCreationTokens +
+          (Number.isFinite(cacheCreation) ? Math.max(0, cacheCreation) : 0),
+      }
+    },
+    {
+      totalQuota: 0,
+      totalCount: 0,
+      totalTokens: 0,
+      totalCacheReadTokens: 0,
+      totalCacheCreationTokens: 0,
+    }
   )
 }

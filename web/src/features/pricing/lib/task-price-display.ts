@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import {
   resolveLocalizedText,
   type LocalizedTextValue,
@@ -28,8 +10,12 @@ import type {
 } from '../types'
 import {
   splitBillingExprAndRequestRules,
+  type ParsedTaskTier,
   type TaskTierCondition,
 } from './billing-expr'
+import { formatBillingCondition } from './billing-expression/condition-display'
+import { compileBillingExpression } from './billing-expression/parser'
+import { visitExpression } from './billing-expression/types'
 import { getTaskPricingDisplayTiers } from './task-matrix-display'
 
 export function taskPriceLabel(
@@ -94,5 +80,44 @@ export function hasSimpleTaskPricing(model: PricingModel): boolean {
     split.billingExpr,
     model.billing_usage_schema
   )
-  return tiers.length === 1
+  return tiers.length === 1 && !tiers[0].conditionText
+}
+
+export function taskTierConditions(
+  tier: ParsedTaskTier,
+  schema: BillingUsageSchema | undefined,
+  language: string,
+  t: (key: string) => string
+): string {
+  const usage = taskPricingConditions(tier.conditions, schema, language, t)
+  const time = tier.conditionText
+    ? (formatBillingCondition(tier.conditionText, t, language) ??
+      tier.conditionText)
+    : ''
+  return [usage, time].filter(Boolean).join(' · ')
+}
+
+export function pricingDisplayFallbackKey(
+  expression: string,
+  schema: BillingUsageSchema | null | undefined
+): string {
+  const compiled = compileBillingExpression(expression)
+  let missingUsageMetadata = false
+  if (compiled.status === 'ready') {
+    visitExpression(compiled.ast, (node) => {
+      if (node.kind !== 'call' || node.name !== 'u') return
+      const key = node.args[0]
+      if (
+        !schema ||
+        key.kind !== 'literal' ||
+        typeof key.value !== 'string' ||
+        !Object.hasOwn(schema, key.value)
+      ) {
+        missingUsageMetadata = true
+      }
+    })
+  }
+  return missingUsageMetadata
+    ? 'Task usage metadata is unavailable. Pricing details cannot be displayed.'
+    : 'This expression cannot be expanded into a price table. View the original expression below.'
 }

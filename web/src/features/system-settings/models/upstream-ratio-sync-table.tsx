@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { Search } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -28,6 +10,7 @@ import {
 } from '@/components/data-table'
 import { EmptyState } from '@/components/empty-state'
 import { LoadingState } from '@/components/loading-state'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -36,10 +19,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import type { PricingCurrency } from '@/features/model-pricing/currency'
 import { useDebounce } from '@/hooks/use-debounce'
 import { useMediaQuery } from '@/hooks/use-media-query'
 
 import type { DifferencesMap, PricingSyncModels } from '../types'
+import type {
+  PriceAdjustment,
+  AdjustedSyncPrice,
+} from './upstream-price-adjustment'
 import { SyncSourceHeader } from './upstream-price-cells'
 import { useUpstreamRatioSyncColumns } from './upstream-ratio-sync-columns'
 import {
@@ -57,6 +45,10 @@ export type PricingSyncRow = {
 }
 type UpstreamRatioSyncTableProps = {
   prices: PricingSyncModels
+  adjustments?: Record<string, PriceAdjustment>
+  adjustedPrices?: Record<string, AdjustedSyncPrice>
+  currency?: PricingCurrency | null
+  onAdjustPrices?: (models: string[], mode: PriceAdjustment) => void
   toolbar?: ReactNode
   differences: DifferencesMap
   selectedSources: PricingSourceSelections
@@ -69,15 +61,19 @@ export function UpstreamRatioSyncTable(props: UpstreamRatioSyncTableProps) {
   const { t } = useTranslation()
   const isMobile = useMediaQuery('(max-width: 640px)')
   const [search, setSearch] = useState('')
+  const [showUnchanged, setShowUnchanged] = useState(false)
   const [kind, setKind] = useState('__all__')
   const debouncedSearch = useDebounce(search, 250)
   const rows = useMemo(
     () =>
       Object.entries(props.prices)
-        .filter(([, values]) =>
-          Object.values(values.upstreams).some(
-            (candidate) => !sameSyncPrice(values.current, candidate)
-          )
+        .filter(
+          ([model, values]) =>
+            showUnchanged ||
+            Boolean(props.selectedSources[model]) ||
+            Object.values(values.upstreams).some(
+              (candidate) => !sameSyncPrice(values.current, candidate)
+            )
         )
         .map(([model, prices]) => ({
           model,
@@ -85,7 +81,7 @@ export function UpstreamRatioSyncTable(props: UpstreamRatioSyncTableProps) {
           differences: props.differences[model],
         }))
         .sort((a, b) => a.model.localeCompare(b.model)),
-    [props.prices, props.differences]
+    [props.prices, props.differences, props.selectedSources, showUnchanged]
   )
   const filteredRows = useMemo(
     () =>
@@ -104,9 +100,13 @@ export function UpstreamRatioSyncTable(props: UpstreamRatioSyncTableProps) {
   const sourceNames = useMemo(
     () =>
       [
-        ...new Set(rows.flatMap((row) => Object.keys(row.prices.upstreams))),
+        ...new Set(
+          Object.values(props.prices).flatMap((row) =>
+            Object.keys(row.upstreams)
+          )
+        ),
       ].sort(),
-    [rows]
+    [props.prices]
   )
   const bulkStates = useMemo(
     () =>
@@ -116,7 +116,12 @@ export function UpstreamRatioSyncTable(props: UpstreamRatioSyncTableProps) {
             .filter(
               (row) =>
                 row.prices.upstreams[source] &&
-                !sameSyncPrice(row.prices.current, row.prices.upstreams[source])
+                (showUnchanged ||
+                  !sameSyncPrice(
+                    row.prices.current,
+                    row.prices.upstreams[source]
+                  ) ||
+                  props.selectedSources[row.model] === source)
             )
             .map((row) => ({ model: row.model, source }))
           return [
@@ -133,7 +138,7 @@ export function UpstreamRatioSyncTable(props: UpstreamRatioSyncTableProps) {
           ]
         })
       ),
-    [filteredRows, sourceNames, props.selectedSources]
+    [filteredRows, sourceNames, props.selectedSources, showUnchanged]
   )
   const columns = useUpstreamRatioSyncColumns(sourceNames, isMobile)
   const { table } = useDataTable({
@@ -182,7 +187,7 @@ export function UpstreamRatioSyncTable(props: UpstreamRatioSyncTableProps) {
         containerClassName='min-h-0 flex-1 rounded-md'
         tableContainerClassName='h-full min-h-0'
         tableHeaderClassName='[background-color:var(--table-header)]'
-          tableBodyClassName='[&>tr]:h-14'
+        tableBodyClassName='[&>tr]:h-14'
         splitHeaderScrollClassName='h-full'
         bodyContainerClassName='[scrollbar-gutter:stable]'
         splitHeader
@@ -202,6 +207,11 @@ export function UpstreamRatioSyncTable(props: UpstreamRatioSyncTableProps) {
       value={{
         bulkStates,
         selectedSources: props.selectedSources,
+        adjustments: props.adjustments ?? {},
+        adjustedPrices: props.adjustedPrices ?? {},
+        currency: props.currency ?? null,
+        onAdjustPrices: props.onAdjustPrices,
+        showUnchanged,
         isDisabled: props.isDisabled,
         onSelectPrices: props.onSelectPrices,
         onUnselectPrices: props.onUnselectPrices,
@@ -249,6 +259,17 @@ export function UpstreamRatioSyncTable(props: UpstreamRatioSyncTableProps) {
               ))}
             </SelectContent>
           </Select>
+          <label className='flex items-center gap-2 text-sm'>
+            <Checkbox
+              checked={showUnchanged}
+              disabled={props.isDisabled}
+              onCheckedChange={(checked) => {
+                setShowUnchanged(checked)
+                table.setPageIndex(0)
+              }}
+            />
+            {t('Show models with matching prices')}
+          </label>
           <span className='text-muted-foreground text-xs sm:ml-auto'>
             USD / {t('1M token')}
           </span>

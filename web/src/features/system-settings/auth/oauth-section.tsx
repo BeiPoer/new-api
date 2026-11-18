@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { zodResolver } from '@hookform/resolvers/zod'
 import axios from 'axios'
 import { ExternalLink } from 'lucide-react'
@@ -298,14 +280,23 @@ export function OAuthSection(props: OAuthSectionProps) {
 
   const onSubmit = async (values: OAuthFormValues) => {
     let finalValues = values
+    const wellKnown = values.oidc.well_known.trim()
+    const discoveryUrlChanged =
+      wellKnown !== (baselineRef.current['oidc.well_known'] ?? '').trim()
+    const enablingOIDC =
+      values.oidc.enabled && !baselineRef.current['oidc.enabled']
 
-    if (values.oidc.well_known && values.oidc.well_known.trim() !== '') {
-      const wellKnown = values.oidc.well_known.trim()
+    // Other providers and disabling OIDC must not depend on OIDC discovery.
+    if (wellKnown && (discoveryUrlChanged || enablingOIDC)) {
       if (
         !wellKnown.startsWith('http://') &&
         !wellKnown.startsWith('https://')
       ) {
-        toast.error(t('Well-Known URL must start with http:// or https://'))
+        setActiveTab('oidc')
+        form.setError('oidc.well_known', {
+          type: 'validate',
+          message: t('Well-Known URL must start with http:// or https://'),
+        })
         return
       }
 
@@ -319,6 +310,7 @@ export function OAuthSection(props: OAuthSectionProps) {
           ...values,
           oidc: {
             ...values.oidc,
+            well_known: wellKnown,
             authorization_endpoint: authEndpoint,
             token_endpoint: tokenEndpoint,
             user_info_endpoint: userInfoEndpoint,
@@ -378,7 +370,7 @@ export function OAuthSection(props: OAuthSectionProps) {
             <SettingsPageFormActions
               onSave={form.handleSubmit(onSubmit)}
               onReset={handleReset}
-              isSaving={updateOption.isPending}
+              isSaving={form.formState.isSubmitting}
               isResetDisabled={!form.formState.isDirty}
             />
             <FormDirtyIndicator isDirty={form.formState.isDirty} />

@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { AlertTriangle, Route } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
@@ -31,6 +13,7 @@ import { getLobeIcon } from '@/lib/lobe-icon'
 import { resolveModelProvider } from '@/lib/model-provider'
 import { cn } from '@/lib/utils'
 
+import { isResponseModelMismatch } from '../lib/response-model'
 import type { LogOtherData } from '../types'
 import { DetailRow } from './dialogs/log-detail-layout'
 
@@ -56,7 +39,7 @@ function ModelBadgeContent(props: ModelBadgeProps & { copyable: boolean }) {
       className={cn(
         'border-border/60 bg-muted/30 h-6 max-w-none gap-1.5 rounded-md border px-2 [font-family:var(--font-body)]',
         provider?.icon && 'text-foreground',
-        props.wrapText && 'h-auto min-h-6 max-w-full py-0.5 whitespace-normal',
+        props.wrapText && 'h-auto min-h-6 max-w-full py-px whitespace-normal',
         props.className
       )}
     >
@@ -78,7 +61,7 @@ function ModelBadgeContent(props: ModelBadgeProps & { copyable: boolean }) {
         <span
           className={
             props.wrapText
-              ? 'line-clamp-2 [overflow-wrap:anywhere]'
+              ? 'line-clamp-2 leading-5 [overflow-wrap:anywhere]'
               : 'whitespace-nowrap'
           }
         >
@@ -91,17 +74,19 @@ function ModelBadgeContent(props: ModelBadgeProps & { copyable: boolean }) {
 
 export function ModelBadge(props: ModelBadgeProps) {
   const { t } = useTranslation()
-  const responseModelLabel = props.responseModel?.mismatch
-    ? t('Response model: {{model}}', {
-        model: props.responseModel.returned_model,
-      })
-    : ''
+  const mismatch = isResponseModelMismatch(props.responseModel)
+  const responseModelLabel =
+    mismatch && props.responseModel
+      ? t('Response model: {{model}}', {
+          model: props.responseModel.returned_model,
+        })
+      : ''
   const modelLabel = `${t('Model')}: ${props.modelName}${responseModelLabel ? `, ${responseModelLabel}` : ''}`
   const hasDetails =
     !!props.actualModel ||
     !!(
       props.responseModel &&
-      (props.responseModel.mismatch ||
+      (mismatch ||
         props.responseModel.returned_model !==
           props.responseModel.requested_model ||
         (props.responseModel.upstream_model &&
@@ -129,7 +114,7 @@ export function ModelBadge(props: ModelBadgeProps) {
   const content = (
     <>
       <ModelBadgeContent {...props} copyable={false} />
-      {props.responseModel?.mismatch && (
+      {mismatch && (
         <StatusBadge
           icon={AlertTriangle}
           label={responseModelLabel}
@@ -137,7 +122,7 @@ export function ModelBadge(props: ModelBadgeProps) {
           copyable={false}
         />
       )}
-      {!props.responseModel?.mismatch && props.actualModel && (
+      {!mismatch && props.actualModel && (
         <Route
           className='text-muted-foreground size-3 shrink-0'
           aria-hidden='true'
@@ -205,10 +190,11 @@ export function ResponseModelDetails(props: {
   observation: NonNullable<LogOtherData['response_model']>
 }) {
   const { t } = useTranslation()
+  const mismatch = isResponseModelMismatch(props.observation)
 
   return (
     <div className='min-w-0 space-y-2'>
-      {props.observation.mismatch && (
+      {mismatch && (
         <StatusBadge
           icon={AlertTriangle}
           label={t('Response model: {{model}}', {
@@ -219,24 +205,42 @@ export function ResponseModelDetails(props: {
           className='h-auto whitespace-normal'
         />
       )}
-      <DetailRow
-        label={t('Request Model')}
-        value={props.observation.requested_model}
-        mono
-      />
-      <DetailRow
-        label={t('Upstream Model')}
-        value={
-          props.observation.upstream_model || props.observation.requested_model
-        }
-        mono
-      />
-      <DetailRow
-        label={t('Response Model')}
-        value={props.observation.returned_model}
-        mono
-      />
-      {props.observation.mismatch && (
+      {[
+        {
+          label: t('Request Model'),
+          value: props.observation.requested_model,
+        },
+        {
+          label: t('Upstream Model'),
+          value:
+            props.observation.upstream_model ||
+            props.observation.requested_model,
+        },
+        {
+          label: t('Response Model'),
+          value: props.observation.returned_model,
+        },
+      ].map((model) => (
+        <DetailRow
+          key={model.label}
+          label={model.label}
+          value={
+            <span className='inline-flex max-w-full items-start gap-1 align-top'>
+              <span className='min-w-0 leading-5 wrap-anywhere'>
+                {model.value}
+              </span>
+              <CopyButton
+                value={model.value}
+                className='size-5'
+                iconClassName='size-3'
+                aria-label={t('Copy {{field}}', { field: model.label })}
+              />
+            </span>
+          }
+          mono
+        />
+      ))}
+      {mismatch && (
         <p className='text-muted-foreground text-xs'>
           {t(
             'The upstream returned a model name different from both the requested and upstream models. Aliases or dated versions may also cause this; this warning alone does not prove model substitution.'

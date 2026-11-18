@@ -1,23 +1,5 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
-import { type LinkProps } from '@tanstack/react-router'
-import { type TFunction } from 'i18next'
+import type { LinkProps } from '@tanstack/react-router'
+import type { TFunction } from 'i18next'
 
 /**
  * Base navigation item type
@@ -110,6 +92,14 @@ export type SidebarViewParent = {
 }
 
 /**
+ * Counts shown next to sidebar entries, already formatted for display
+ */
+export type SidebarBadges = {
+  /** Task models whose price needs attention, on the entries leading to model pricing */
+  modelPricing?: string
+}
+
+/**
  * Nested sidebar view configuration
  *
  * A nested view replaces the root navigation when the user enters a
@@ -124,8 +114,8 @@ export type SidebarView = {
   pathPattern: RegExp
   /** Back-navigation descriptor; required for nested views */
   parent: SidebarViewParent
-  /** Nav group builder, called per render with the active translator */
-  getNavGroups: (t: TFunction) => NavGroup[]
+  /** Nav group builder, called per render with the active translator and badges */
+  getNavGroups: (t: TFunction, badges: SidebarBadges) => NavGroup[]
 }
 
 /**

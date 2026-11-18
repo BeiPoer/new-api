@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import type { Transition, Variants } from 'motion/react'
 
 const EASE_OUT_CUBIC = [0.33, 1, 0.68, 1] as const
@@ -38,7 +20,14 @@ export const MOTION_TRANSITION: Record<string, Transition> = {
 export const MOTION_VARIANTS = {
   pageEnter: {
     initial: { opacity: 0, y: 8, filter: 'blur(4px)' },
-    animate: { opacity: 1, y: 0, filter: 'blur(0px)' },
+    animate: {
+      opacity: 1,
+      y: 0,
+      // Exact zero blur can blank the page on some Android renderers.
+      // Preserve the blur animation, then release the filter after it finishes.
+      filter: 'blur(0.01px)',
+      transitionEnd: { filter: 'none' },
+    },
     exit: { opacity: 0, y: -4, filter: 'blur(2px)' },
   },
   fadeIn: {

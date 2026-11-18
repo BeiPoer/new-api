@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import i18next from 'i18next'
@@ -100,13 +82,55 @@ test('shows the recorded request and response models in log details', () => {
       requested_model: 'requested-model',
       upstream_model: 'mapped-model',
       returned_model: 'unexpected-model',
-      mismatch: true,
     },
   })
   expect(screen.getByText('Response model: unexpected-model')).toBeVisible()
   expect(rowValue('Request Model')).toBe('requested-model')
   expect(rowValue('Upstream Model')).toBe('mapped-model')
   expect(screen.getByText('unexpected-model')).toBeVisible()
+  queryClient.clear()
+})
+
+test('splits OpenAI cache writes into 30-minute and 12-hour rows with their prices', () => {
+  const queryClient = renderDetails(
+    {
+      model_ratio: 5,
+      completion_ratio: 4,
+      group_ratio: 1,
+      cache_tokens: 2000,
+      cache_ratio: 0.1,
+      cache_creation_tokens: 1500,
+      cache_creation_ratio: 1.25,
+      cache_creation_tokens_12h: 1000,
+      cache_creation_ratio_12h: 2.5,
+    },
+    4000
+  )
+  expect(rowValue('Cache Write (30m)')).toBe('500')
+  expect(rowValue('Cache Write (12h)')).toBe('1,000')
+  expect(screen.queryByText('Cache Write')).toBeNull()
+  expect(rowValue('Cache Creation (30m)')).toBe('$12.5/M')
+  expect(rowValue('Cache Creation (12h)')).toBe('$25/M')
+  queryClient.clear()
+})
+
+test('keeps one cache write row and no cache prices for OpenAI logs without 12-hour writes', () => {
+  const queryClient = renderDetails(
+    {
+      model_ratio: 5,
+      completion_ratio: 4,
+      group_ratio: 1,
+      cache_tokens: 2000,
+      cache_ratio: 0.1,
+      cache_creation_tokens: 1500,
+      cache_creation_ratio: 1.25,
+    },
+    4000
+  )
+  expect(rowValue('Cache Write')).toBe('1,500')
+  expect(screen.queryByText('Cache Write (30m)')).toBeNull()
+  expect(screen.queryByText('Cache Creation (30m)')).toBeNull()
+  expect(screen.queryByText('Cache Creation')).toBeNull()
   queryClient.clear()
 })
 

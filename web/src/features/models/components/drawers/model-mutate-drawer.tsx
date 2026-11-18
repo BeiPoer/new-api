@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
@@ -75,6 +57,7 @@ import { getNameRuleOptions, ENDPOINT_TEMPLATES } from '../../constants'
 import { modelsQueryKeys, vendorsQueryKeys } from '../../lib'
 import {
   modelFormSchema,
+  MODEL_FORM_DEFAULT_VALUES,
   transformModelToFormDefaults,
   transformFormDataToModelPayload,
   type ModelFormValues,
@@ -115,12 +98,7 @@ export function ModelMutateDrawer(props: {
   const loadedKey = useRef('')
   const form = useForm({
     resolver: zodResolver(modelFormSchema),
-    defaultValues: transformModelToFormDefaults({
-      model_name: '',
-      status: 1,
-      sync_official: 1,
-      name_rule: 0,
-    } as Model),
+    defaultValues: MODEL_FORM_DEFAULT_VALUES,
   })
   const vendorsQuery = useQuery({
     queryKey: vendorsQueryKeys.list(),
@@ -163,6 +141,7 @@ export function ModelMutateDrawer(props: {
 
   useEffect(() => {
     if (!props.open) {
+      form.reset(MODEL_FORM_DEFAULT_VALUES)
       setCreatedModel(null)
       loadedKey.current = ''
       return
@@ -172,16 +151,12 @@ export function ModelMutateDrawer(props: {
       : `channel:${currentRow?.model_name ?? ''}`
     if (loadedKey.current === key || (isEditing && !modelQuery.data)) return
     form.reset(
-      transformModelToFormDefaults(
-        (isEditing
-          ? modelQuery.data
-          : {
-              model_name: currentRow?.model_name ?? '',
-              status: 1,
-              sync_official: 1,
-              name_rule: 0,
-            }) as Model
-      )
+      isEditing && modelQuery.data
+        ? transformModelToFormDefaults(modelQuery.data)
+        : {
+            ...MODEL_FORM_DEFAULT_VALUES,
+            model_name: currentRow?.model_name ?? '',
+          }
     )
     loadedKey.current = key
   }, [props.open, currentRow, isEditing, modelQuery.data, form])
@@ -401,7 +376,7 @@ export function ModelMutateDrawer(props: {
                                 }))}
                                 onValueChange={(value) =>
                                   field.onChange(
-                                    value ? Number.parseInt(value) : undefined
+                                    value ? Number.parseInt(value) : 0
                                   )
                                 }
                                 value={field.value ? String(field.value) : null}

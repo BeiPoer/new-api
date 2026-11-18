@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { SettingsPage } from '../components/settings-page'
 import type { BillingSettings } from '../types'
 import {
@@ -26,12 +8,12 @@ import {
 
 const defaultBillingSettings: BillingSettings = {
   QuotaForNewUser: 0,
-  PreConsumedQuota: 0,
   QuotaForInviter: 0,
   QuotaForInvitee: 0,
   TopUpLink: '',
-  'general_setting.docs_link': '',
   'quota_setting.enable_free_model_pre_consume': true,
+  'quota_setting.trust_quota_usd': 10,
+  'quota_setting.pre_consume_multiplier': 1,
   QuotaPerUnit: 500000,
   USDExchangeRate: 7,
   'general_setting.quota_display_type': 'USD',
@@ -79,6 +61,9 @@ const defaultBillingSettings: BillingSettings = {
   'payment_setting.amount_options': '',
   'payment_setting.amount_discount': '',
   'payment_setting.payment_notice': '',
+  'payment_setting.epay_sign_type': 'MD5',
+  'payment_setting.epay_merchant_private_key': '',
+  'payment_setting.epay_platform_public_key': '',
   'payment_setting.compliance_confirmed': false,
   'payment_setting.compliance_terms_version': '',
   'payment_setting.compliance_confirmed_at': 0,

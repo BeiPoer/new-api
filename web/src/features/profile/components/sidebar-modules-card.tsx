@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { LayoutDashboard } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -31,6 +13,8 @@ import {
 } from '@/components/ui/card'
 import { IconBadge } from '@/components/ui/icon-badge'
 import { Switch } from '@/components/ui/switch'
+import { parseSidebarModulesAdmin } from '@/features/system-settings/maintenance/config'
+import { useStatus } from '@/hooks/use-status'
 import { api } from '@/lib/api'
 import { handleServerError } from '@/lib/handle-server-error'
 import { useAuthStore } from '@/stores/auth-store'
@@ -51,6 +35,7 @@ type SectionDef = {
 
 export function SidebarModulesCard() {
   const { t } = useTranslation()
+  const { status } = useStatus()
   const [loading, setLoading] = useState(false)
   const [config, setConfig] = useState<SidebarModulesConfig>({})
   const currentUser = useAuthStore((s) => s.auth.user)
@@ -135,6 +120,21 @@ export function SidebarModulesCard() {
     },
   ]
 
+  const adminConfig = parseSidebarModulesAdmin(
+    status?.SidebarModulesAdmin as string | null | undefined
+  )
+  const visibleSectionDefs = status
+    ? sectionDefs.flatMap((section) => {
+        const adminSection = adminConfig[section.key]
+        if (!adminSection?.enabled) return []
+
+        const modules = section.modules.filter(
+          (module) => adminSection[module.key] === true
+        )
+        return modules.length ? [{ ...section, modules }] : []
+      })
+    : []
+
   const loadConfig = useCallback(async () => {
     try {
       const res = await api.get('/api/user/self')
@@ -143,12 +143,7 @@ export function SidebarModulesCard() {
         const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
         setConfig(parsed)
       } else {
-        const defaults: SidebarModulesConfig = {}
-        for (const sec of sectionDefs) {
-          defaults[sec.key] = { enabled: true }
-          for (const mod of sec.modules) defaults[sec.key][mod.key] = true
-        }
-        setConfig(defaults)
+        setConfig({})
       }
     } catch {
       /* ignore */
@@ -204,13 +199,15 @@ export function SidebarModulesCard() {
 
   const handleReset = () => {
     const defaults: SidebarModulesConfig = {}
-    for (const sec of sectionDefs) {
+    for (const sec of visibleSectionDefs) {
       defaults[sec.key] = { enabled: true }
       for (const mod of sec.modules) defaults[sec.key][mod.key] = true
     }
     setConfig(defaults)
     toast.success(t('Reset to default configuration'))
   }
+
+  if (!status) return null
 
   return (
     <Card data-card-hover='false' className='gap-0 overflow-hidden py-0'>
@@ -230,7 +227,7 @@ export function SidebarModulesCard() {
         </div>
       </CardHeader>
       <CardContent className='space-y-4 p-3 sm:space-y-5 sm:p-5'>
-        {sectionDefs.map((section) => {
+        {visibleSectionDefs.map((section) => {
           const sectionEnabled = config[section.key]?.enabled !== false
           return (
             <div

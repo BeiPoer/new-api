@@ -1,24 +1,7 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import {
   ArrowLeftRight,
   Edit,
+  Eraser,
   FileText,
   Link2Off,
   ListFilter,
@@ -39,7 +22,6 @@ import { Button } from '@/components/ui/button'
 import {
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import {
   Tooltip,
@@ -55,6 +37,7 @@ import type { AffinityRule, CacheStats, SessionMode } from './types'
 interface SessionRulesTableProps {
   rules: AffinityRule[]
   cacheStats: CacheStats | null
+  cacheBusy: boolean
   enabled?: boolean
   globalSessionMode?: SessionMode | ''
   onEdit: (rule: AffinityRule) => void
@@ -93,7 +76,7 @@ export function SessionRulesTable(props: SessionRulesTableProps) {
         tabIndex: 0,
       }}
       tableProps={{ withContainer: false }}
-      tableClassName='min-w-[960px] table-fixed [&_th]:px-4 [&_th]:text-muted-foreground [&_td]:px-4 [&_td]:py-4 [&_code]:font-mono!'
+      tableClassName='min-w-[1120px] table-fixed [&_th]:px-4 [&_th]:text-muted-foreground [&_td]:px-4 [&_td]:py-4 [&_code]:font-mono!'
       headerRowClassName='bg-muted/35 hover:bg-muted/35'
       data={props.rules}
       getRowKey={(rule) => rule.id ?? rule.name}
@@ -230,15 +213,59 @@ export function SessionRulesTable(props: SessionRulesTableProps) {
         },
         {
           id: 'cache',
-          header: t('Cache'),
-          className: 'w-16 text-right',
+          header: t('Cache Entries'),
+          className: 'w-44 text-right',
           cellClassName: 'text-right tabular-nums',
           cell: (rule) => {
-            if (!rule.include_rule_name) return t('N/A')
-            if (!props.cacheStats) return '—'
-            return formatNumber(
-              props.cacheStats.by_rule_name?.[rule.name] || 0,
-              locale
+            const ruleName = rule.name.trim()
+            const count = props.cacheStats?.by_rule_name?.[ruleName]
+            let unavailableReason = ''
+            if (!rule.include_rule_name) {
+              unavailableReason = t(
+                'This rule shares its cache and cannot be cleared separately.'
+              )
+            } else if (!props.cacheStats) {
+              unavailableReason = t(
+                'Cache statistics are unavailable. Refresh to try again.'
+              )
+            } else if (count === undefined) {
+              unavailableReason = t('Save this rule before clearing its cache.')
+            }
+            let countLabel = '—'
+            if (!rule.include_rule_name) countLabel = t('N/A')
+            else if (count !== undefined) {
+              countLabel = formatNumber(count, locale)
+            }
+            return (
+              <div className='flex flex-wrap items-center justify-end gap-2'>
+                <span>{countLabel}</span>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <span
+                        className='inline-flex'
+                        tabIndex={unavailableReason ? 0 : undefined}
+                      />
+                    }
+                  >
+                    <Button
+                      variant='destructive'
+                      size='sm'
+                      aria-label={t('Clear cache for {{name}}', {
+                        name: rule.name,
+                      })}
+                      disabled={Boolean(unavailableReason) || props.cacheBusy}
+                      onClick={() => props.onClearCache(ruleName)}
+                    >
+                      <Eraser aria-hidden='true' />
+                      {t('Clear cache')}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {unavailableReason || t('Clear cache for this rule')}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
             )
           },
         },
@@ -269,17 +296,6 @@ export function SessionRulesTable(props: SessionRulesTableProps) {
               </Tooltip>
               <DataTableRowActionMenu ariaLabel={t('More actions')}>
                 <DropdownMenuGroup>
-                  {rule.include_rule_name ? (
-                    <>
-                      <DropdownMenuItem
-                        onClick={() => props.onClearCache(rule.name)}
-                      >
-                        <Trash2 aria-hidden='true' />
-                        {t('Clear cache for this rule')}
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                    </>
-                  ) : null}
                   <DropdownMenuItem
                     variant='destructive'
                     onClick={() => props.onDelete(rule)}

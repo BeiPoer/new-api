@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -36,7 +18,8 @@ import { PluginEndpoints } from './plugin-endpoints'
 import { PluginModelList } from './plugin-model-list'
 
 type MarketplaceCapabilitiesProps = {
-  plugin: MarketplacePlugin
+  /** Omitted for a manual upload: only the source declarations are shown. */
+  plugin?: MarketplacePlugin
   version?: MarketplaceIndexVersion
   source?: string
   onRetry?: () => void
@@ -56,7 +39,7 @@ function PreviewFact(props: {
           variant='outline'
           className='text-muted-foreground text-[11px] font-normal'
         >
-          {t('From marketplace index')}
+          {t('From the marketplace source')}
         </Badge>
       )}
     </div>
@@ -71,7 +54,7 @@ function EndpointPreviewNote(props: {
   if (props.field.state === 'value' && props.field.value.length > 0) {
     return props.field.origin === 'index' ? (
       <p className='text-muted-foreground text-xs'>
-        {props.label} · {t('From marketplace index')}
+        {props.label} · {t('From the marketplace source')}
       </p>
     ) : null
   }
@@ -115,16 +98,16 @@ export function MarketplaceCapabilities(props: MarketplaceCapabilitiesProps) {
   }
   let authentication = t('Information unavailable')
   if (fields.auth.state === 'missing') {
-    authentication = t('Not declared; an API key may still be required.')
+    authentication = t('Not declared by this plugin')
   }
   if (fields.auth.state === 'value') {
     authentication = fields.auth.value
     if (!authentication) {
-      authentication = t('Not declared; an API key may still be required.')
+      authentication = t('Not declared by this plugin')
     }
     if (authentication === 'api_key') authentication = t('API Key')
     if (authentication === 'none') {
-      authentication = t('None (plugin declaration)')
+      authentication = t('None')
     }
     if (authentication === 'oauth2_jwt' || authentication === 'vertex_oauth') {
       authentication = t('OAuth 2.0 service account')
@@ -148,23 +131,19 @@ export function MarketplaceCapabilities(props: MarketplaceCapabilitiesProps) {
       title: t('Upstream authentication'),
       value: authentication,
       field: fields.auth,
-      hint: t(
-        'Authentication for upstream requests; channel credentials may still be used.'
-      ),
+      hint: t('How requests to the upstream are authenticated.'),
     },
     {
       title: t('Default API address'),
       value: baseUrl,
       field: fields.baseUrl,
-      hint: t('Used when a Task Plugin channel has no API address configured.'),
+      hint: t('Used when the channel has no API address.'),
     },
     {
       title: t('Additional request domains'),
       value: hosts,
       field: fields.allowedHosts,
-      hint: t(
-        'Extra destinations beyond the channel API address. The channel address remains accessible.'
-      ),
+      hint: t('Addresses the plugin may call besides the channel API address.'),
     },
   ]
 
@@ -173,9 +152,7 @@ export function MarketplaceCapabilities(props: MarketplaceCapabilitiesProps) {
       {parsed && parsed.status !== 'parsed' && (
         <ErrorState
           title={t('Some plugin information could not be read')}
-          description={t(
-            'Dynamic declarations cannot be previewed. Retry or review the source below.'
-          )}
+          description={t('Retry, or read the plugin code below.')}
           onRetry={props.onRetry}
           className='min-h-0 border p-3'
         />
@@ -207,6 +184,9 @@ export function MarketplaceCapabilities(props: MarketplaceCapabilitiesProps) {
           }
           routes={
             fields.routes.state === 'value' ? fields.routes.value : undefined
+          }
+          pluginKey={
+            fields.key.state === 'value' ? fields.key.value : undefined
           }
           protocolsNote={
             <EndpointPreviewNote
@@ -251,11 +231,6 @@ export function MarketplaceCapabilities(props: MarketplaceCapabilitiesProps) {
           ))}
         </dl>
       </section>
-      <p className='text-muted-foreground text-xs leading-relaxed'>
-        {t(
-          'This preview reads static plugin declarations. The gateway validates the plugin during installation.'
-        )}
-      </p>
     </div>
   )
 }

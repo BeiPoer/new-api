@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { describe, expect, test } from 'vitest'
 
 import type { FlowQuotaDataItem } from '../types'
@@ -736,6 +718,28 @@ describe('dashboard flow data', () => {
       ['Requests', '2'],
       ['Share', '100.0%'],
     ])
+  })
+
+  test('draws labels and the active node outline in the theme text color', () => {
+    const result = buildDashboardFlowData(rows.slice(0, 1), 'quota', {
+      role: 'root',
+      activeNode: { kind: 'user', id: 'user:1' },
+    })
+    const flowSpec = buildFlowSankeySpec(
+      result.flow,
+      'Flow',
+      undefined,
+      undefined,
+      'rgba(245, 245, 245, 1.00)'
+    )
+    const aliceNode = flowSpec.data[0].values[0].nodes.find(
+      (node: Record<string, unknown>) => node.key === 'user:1'
+    )
+
+    expect(flowSpec.label.style.fill).toBe('rgba(245, 245, 245, 1.00)')
+    expect(flowSpec.node.style.stroke({ datum: aliceNode })).toBe(
+      'rgba(245, 245, 245, 1.00)'
+    )
   })
 
   test('maps active flow highlight states into the Sankey spec', () => {

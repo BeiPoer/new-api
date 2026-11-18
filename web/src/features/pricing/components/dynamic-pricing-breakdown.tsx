@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { Tag as TagIcon } from 'lucide-react'
 import { useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -57,7 +39,8 @@ import { getTaskPricingDisplayTiers } from '../lib/task-matrix-display'
 import {
   taskPriceLabel,
   taskUsageUnitLabel,
-  taskPricingConditions,
+  taskTierConditions,
+  pricingDisplayFallbackKey,
 } from '../lib/task-price-display'
 import type { BillingUsageSchema, BillingUsageUnit } from '../types'
 
@@ -188,7 +171,7 @@ function formatBreakdownConditionSummary(
     return formatConditionSummary(tier.conditions, t)
   }
   return (
-    taskPricingConditions(tier.conditions, schema, language, t) ||
+    taskTierConditions(tier, schema, language, t) ||
     t(tierCount > 1 ? 'Other cases' : 'All requests')
   )
 }
@@ -352,7 +335,7 @@ export function DynamicPricingBreakdown({
                 {t('Special billing expression')}
               </div>
               <div className='text-muted-foreground text-xs'>
-                {t('Unable to parse structured pricing')}
+                {t(pricingDisplayFallbackKey(expr, usageSchema))}
               </div>
             </div>
           </div>

@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { ChevronDown } from 'lucide-react'
 import { useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -110,6 +92,7 @@ function PriceField({
 }
 
 type TierPriceFieldsProps = {
+  imageCount?: boolean
   billingUnit?: 'token' | 'request'
   fixedPrice?: string
   onBillingUnitChange?: (unit: 'token' | 'request') => void
@@ -136,33 +119,40 @@ export function TierPriceFields(props: TierPriceFieldsProps) {
   const renderPriceVariable = (variable: {
     key: VisualPrice['variable']
     label: string
-  }) => (
-    <PriceField
-      key={variable.key}
-      currency={props.currency}
-      label={
-        variable.key === 'cc' && props.prices.cc1h !== undefined
-          ? t('Cache Creation (5m)')
-          : t(variable.label)
-      }
-      value={props.prices[variable.key] ?? 0}
-      onChange={(value) => props.onChange(variable.key, value)}
-      included={
-        props.onInclude ? props.prices[variable.key] !== undefined : undefined
-      }
-      onInclude={
-        props.onInclude
-          ? (included) => props.onInclude?.(variable.key, included)
-          : undefined
-      }
-      invalid={props.invalidVariables?.includes(variable.key)}
-    />
-  )
+  }) => {
+    let label = t(variable.label)
+    if (variable.key === 'cc' && props.prices.cc1h !== undefined) {
+      label = t('Cache Creation (5m)')
+    } else if (variable.key === 'cc' && props.prices.cc12h !== undefined) {
+      label = t('Cache Creation (30m)')
+    }
+    return (
+      <PriceField
+        key={variable.key}
+        currency={props.currency}
+        label={label}
+        value={props.prices[variable.key] ?? 0}
+        onChange={(value) => props.onChange(variable.key, value)}
+        included={
+          props.onInclude ? props.prices[variable.key] !== undefined : undefined
+        }
+        onInclude={
+          props.onInclude
+            ? (included) => props.onInclude?.(variable.key, included)
+            : undefined
+        }
+        invalid={props.invalidVariables?.includes(variable.key)}
+      />
+    )
+  }
   const billingControl = props.onBillingUnitChange && (
     <Select
       items={[
         { value: 'token', label: t('Per token') },
-        { value: 'request', label: t('Per-call') },
+        {
+          value: 'request',
+          label: props.imageCount ? t('Price per image') : t('Per-call'),
+        },
       ]}
       value={props.billingUnit ?? 'token'}
       onValueChange={(value) => {
@@ -181,7 +171,9 @@ export function TierPriceFields(props: TierPriceFieldsProps) {
       <SelectContent alignItemWithTrigger={false}>
         <SelectGroup>
           <SelectItem value='token'>{t('Per token')}</SelectItem>
-          <SelectItem value='request'>{t('Per-call')}</SelectItem>
+          <SelectItem value='request'>
+            {props.imageCount ? t('Price per image') : t('Per-call')}
+          </SelectItem>
         </SelectGroup>
       </SelectContent>
     </Select>
@@ -192,10 +184,12 @@ export function TierPriceFields(props: TierPriceFieldsProps) {
         {billingControl}
         <PriceField
           currency={props.currency}
-          label={t('Price per request')}
+          label={
+            props.imageCount ? t('Price per image') : t('Price per request')
+          }
           value={props.fixedPrice ?? ''}
           onChange={(value) => props.onFixedPriceChange?.(value)}
-          hint={`${props.currency.symbol}/${t('request')}`}
+          hint={`${props.currency.symbol}/${props.imageCount ? t('image') : t('request')}`}
           invalid={props.invalidVariables?.includes('fixed')}
         />
       </>

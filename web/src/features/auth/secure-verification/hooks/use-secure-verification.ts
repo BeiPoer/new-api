@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 
 import { AuthOperationError } from '@/lib/secure-verification'
@@ -277,58 +259,60 @@ export function useSecureVerification() {
     [loadRequirements]
   )
 
-  const executeVerification = useCallback(async () => {
-    const current = pending.current
-    if (
-      !current ||
-      current.submitting ||
-      state.phase !== 'ready' ||
-      !state.input
-    ) {
-      return
-    }
-    current.submitting = true
-    const input = state.input
-    dispatch({ type: 'submit' })
-    try {
-      if (current.kind === 'login') {
-        const bundle = await verifyLogin(
-          input,
-          current.request.challenge,
-          current.controller.signal,
-          (domains) => {
-            if (pending.current === current) setPasskeyDomains(domains)
-          }
-        )
+  const executeVerification = useCallback(
+    async (override?: VerificationInput) => {
+      const current = pending.current
+      if (!current || current.submitting || state.phase !== 'ready') return
+      const input = override ?? state.input
+      if (!input) return
+      const available = state.requirements.methods.some(
+        (option) => option.method === input.method && option.available
+      )
+      if (!available) return
+      current.submitting = true
+      if (override) dispatch({ type: 'input', input })
+      dispatch({ type: 'submit' })
+      try {
+        if (current.kind === 'login') {
+          const bundle = await verifyLogin(
+            input,
+            current.request.challenge,
+            current.controller.signal,
+            (domains) => {
+              if (pending.current === current) setPasskeyDomains(domains)
+            }
+          )
+          if (pending.current !== current) return
+          current.resolve(bundle)
+        } else {
+          const proof = await verify(
+            input,
+            current.request,
+            state.requirements.password_encryption_enabled,
+            current.controller.signal,
+            (domains) => {
+              if (pending.current === current) setPasskeyDomains(domains)
+            }
+          )
+          if (pending.current !== current) return
+          current.resolve(proof)
+        }
+        pending.current = null
+        dispatch({ type: 'reset' })
+      } catch (error) {
         if (pending.current !== current) return
-        current.resolve(bundle)
-      } else {
-        const proof = await verify(
-          input,
-          current.request,
-          state.requirements.password_encryption_enabled,
-          current.controller.signal,
-          (domains) => {
-            if (pending.current === current) setPasskeyDomains(domains)
-          }
-        )
-        if (pending.current !== current) return
-        current.resolve(proof)
+        const failure = AuthOperationError.from(error)
+        if (failure.code === 'AUTH_CANCELLED') {
+          cancel()
+          return
+        }
+        dispatch({ type: 'error', error: failure.message })
+      } finally {
+        current.submitting = false
       }
-      pending.current = null
-      dispatch({ type: 'reset' })
-    } catch (error) {
-      if (pending.current !== current) return
-      const failure = AuthOperationError.from(error)
-      if (failure.code === 'AUTH_CANCELLED') {
-        cancel()
-        return
-      }
-      dispatch({ type: 'error', error: failure.message })
-    } finally {
-      current.submitting = false
-    }
-  }, [cancel, state])
+    },
+    [cancel, state]
+  )
 
   const retry = useCallback(() => {
     if (pending.current && state.phase === 'error') {

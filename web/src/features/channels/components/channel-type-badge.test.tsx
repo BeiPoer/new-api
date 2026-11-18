@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
@@ -71,6 +53,30 @@ test('identifies a bound plugin by its metadata and retains the task-plugin type
   expect(screen.getByText('Task Plugin')).toBeInTheDocument()
   expect(screen.queryByTestId('OpenAI.Color')).not.toBeInTheDocument()
 })
+
+test.each([
+  {
+    flags: { task: false, provider: true, login: false },
+    kind: 'Plugin',
+    other: 'Task Plugin',
+  },
+  {
+    flags: { task: true, provider: false, login: true },
+    kind: 'Task Plugin',
+    other: 'Plugin',
+  },
+])(
+  'labels a plugin by its relay routes, not by its login: $kind',
+  async (row) => {
+    vi.mocked(getTaskPluginOptions).mockResolvedValue([
+      { key: 'acct', name: 'Account Plugin', models: [], ...row.flags },
+    ])
+    render(<ChannelTypeHarness pluginKey='acct' />)
+    expect(await screen.findByText('Account Plugin')).toBeInTheDocument()
+    expect(screen.getByText(row.kind)).toBeInTheDocument()
+    expect(screen.queryByText(row.other)).not.toBeInTheDocument()
+  }
+)
 
 test('keeps the binding key when the plugin is unavailable', async () => {
   vi.mocked(getTaskPluginOptions).mockResolvedValue([])

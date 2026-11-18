@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Code2, Eye, ShieldAlert } from 'lucide-react'
@@ -44,9 +26,18 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
+import { getPaymentErrorTranslation } from '@/features/wallet/lib/payment'
 import { handleServerError } from '@/lib/handle-server-error'
 import { cn } from '@/lib/utils'
 
@@ -141,6 +132,9 @@ const paymentSchema = z.object({
   AlipayExchangeRate: z.coerce
     .number()
     .positive('Enter a value greater than 0'),
+  EpaySignType: z.string(),
+  EpayMerchantPrivateKey: z.string(),
+  EpayPlatformPublicKey: z.string(),
   Price: z.coerce.number().min(0),
   MinTopUp: z.coerce.number().min(0),
   CustomCallbackAddress: z
@@ -483,6 +477,9 @@ export function PaymentSettingsSection({
       AlipaySubscriptionReturnURL: values.AlipaySubscriptionReturnURL.trim(),
       AlipayMinTopUp: values.AlipayMinTopUp,
       AlipayExchangeRate: values.AlipayExchangeRate,
+      EpaySignType: values.EpaySignType,
+      EpayMerchantPrivateKey: values.EpayMerchantPrivateKey.trim(),
+      EpayPlatformPublicKey: values.EpayPlatformPublicKey.trim(),
       Price: values.Price,
       MinTopUp: values.MinTopUp,
       CustomCallbackAddress: removeTrailingSlash(values.CustomCallbackAddress),
@@ -536,6 +533,9 @@ export function PaymentSettingsSection({
         initialRef.current.AlipaySubscriptionReturnURL.trim(),
       AlipayMinTopUp: initialRef.current.AlipayMinTopUp,
       AlipayExchangeRate: initialRef.current.AlipayExchangeRate,
+      EpaySignType: initialRef.current.EpaySignType,
+      EpayMerchantPrivateKey: initialRef.current.EpayMerchantPrivateKey.trim(),
+      EpayPlatformPublicKey: initialRef.current.EpayPlatformPublicKey.trim(),
       Price: initialRef.current.Price,
       MinTopUp: initialRef.current.MinTopUp,
       CustomCallbackAddress: removeTrailingSlash(
@@ -639,6 +639,31 @@ export function PaymentSettingsSection({
       updates.push({
         key: 'AlipayExchangeRate',
         value: sanitized.AlipayExchangeRate,
+      })
+    }
+
+    // Keys go first: the server only accepts RSA once both saved keys work.
+    if (
+      sanitized.EpayMerchantPrivateKey &&
+      sanitized.EpayMerchantPrivateKey !== initial.EpayMerchantPrivateKey
+    ) {
+      updates.push({
+        key: 'payment_setting.epay_merchant_private_key',
+        value: sanitized.EpayMerchantPrivateKey,
+      })
+    }
+
+    if (sanitized.EpayPlatformPublicKey !== initial.EpayPlatformPublicKey) {
+      updates.push({
+        key: 'payment_setting.epay_platform_public_key',
+        value: sanitized.EpayPlatformPublicKey,
+      })
+    }
+
+    if (sanitized.EpaySignType !== initial.EpaySignType) {
+      updates.push({
+        key: 'payment_setting.epay_sign_type',
+        value: sanitized.EpaySignType,
       })
     }
 
@@ -886,7 +911,9 @@ export function PaymentSettingsSection({
         return
       }
 
-      const reason = typeof body?.data === 'string' ? body.data : undefined
+      const reason =
+        getPaymentErrorTranslation(body) ??
+        (typeof body?.data === 'string' ? body.data : undefined)
       handleServerError(body, undefined, {
         title: reason
           ? `${t('Waffo Pancake save failed')}: ${reason}`
@@ -1379,7 +1406,7 @@ export function PaymentSettingsSection({
                   />
                 </div>
 
-                <div className='grid gap-6 md:grid-cols-2'>
+                <div className='grid gap-6 md:grid-cols-2 md:items-start'>
                   <FormField
                     control={form.control}
                     name='EpayId'
@@ -1403,29 +1430,116 @@ export function PaymentSettingsSection({
 
                   <FormField
                     control={form.control}
-                    name='EpayKey'
+                    name='EpaySignType'
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('Epay secret key')}</FormLabel>
-                        <FormControl>
-                          <Input
-                            type='password'
-                            placeholder={t('Enter new key to update')}
-                            autoComplete='new-password'
-                            {...field}
-                            onChange={(event) =>
-                              field.onChange(event.target.value)
-                            }
-                          />
-                        </FormControl>
+                        <FormLabel>{t('Signature type')}</FormLabel>
+                        <Select
+                          items={[
+                            { value: 'MD5', label: 'MD5' },
+                            { value: 'RSA', label: 'RSA' },
+                          ]}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <FormControl>
+                            <SelectTrigger className='w-full'>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent alignItemWithTrigger={false}>
+                            <SelectGroup>
+                              <SelectItem value='MD5'>MD5</SelectItem>
+                              <SelectItem value='RSA'>RSA</SelectItem>
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
                         <FormDescription>
-                          {t('Leave blank unless rotating the secret')}
+                          {t(
+                            'Use the same signature type as in your Epay merchant console'
+                          )}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
+
+                {currentFormValues.EpaySignType === 'RSA' ? (
+                  <div className='grid gap-6 md:grid-cols-2 md:items-start'>
+                    <FormField
+                      control={form.control}
+                      name='EpayMerchantPrivateKey'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('Merchant private key')}</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              rows={4}
+                              placeholder='MIIEvQIBADANBgkqhkiG9w0BAQEFAASC...'
+                              autoComplete='off'
+                              spellCheck={false}
+                              className='font-mono text-xs break-all'
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            {t('Leave blank to keep the existing key')}
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name='EpayPlatformPublicKey'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('Platform public key')}</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              rows={4}
+                              placeholder='MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A...'
+                              autoComplete='off'
+                              spellCheck={false}
+                              className='font-mono text-xs break-all'
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                ) : (
+                  <div className='grid gap-6 md:grid-cols-2'>
+                    <FormField
+                      control={form.control}
+                      name='EpayKey'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('Epay secret key')}</FormLabel>
+                          <FormControl>
+                            <Input
+                              type='password'
+                              placeholder={t('Enter new key to update')}
+                              autoComplete='new-password'
+                              {...field}
+                              onChange={(event) =>
+                                field.onChange(event.target.value)
+                              }
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            {t('Leave blank unless rotating the secret')}
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
               </div>
             </TabsContent>
 

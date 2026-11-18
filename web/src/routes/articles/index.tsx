@@ -1,12 +1,12 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
 import { PublicLayout } from '@/components/layout'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getArticles } from '@/features/articles/api'
-import { requireServerSuccess } from '@/lib/server-error-message'
 import dayjs from '@/lib/dayjs'
+import { requireServerSuccess } from '@/lib/server-error-message'
 
 export const Route = createFileRoute('/articles/')({ component: ArticlesPage })
 
@@ -22,10 +22,14 @@ function ArticlesPage() {
       <div className='mx-auto max-w-4xl space-y-6 py-8'>
         <h1 className='text-3xl font-semibold'>{t('News')}</h1>
         {query.isLoading && <Skeleton className='h-32 w-full' />}
-        {query.isError && <p className='text-destructive'>{t('Failed to load articles')}</p>}
-        {!query.isLoading && !query.isError && query.data?.data.length === 0 && (
-          <p className='text-muted-foreground'>{t('No articles yet')}</p>
+        {query.isError && (
+          <p className='text-destructive'>{t('Failed to load articles')}</p>
         )}
+        {!query.isLoading &&
+          !query.isError &&
+          query.data?.data.length === 0 && (
+            <p className='text-muted-foreground'>{t('No articles yet')}</p>
+          )}
         <div className='space-y-3'>
           {query.data?.data.map((article) => (
             <Link

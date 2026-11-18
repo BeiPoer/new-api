@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { Add01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { ArrowRightLeft } from 'lucide-react'
@@ -47,6 +29,11 @@ export type Option = {
    * values also carry a marker icon whose tooltip repeats the hint.
    */
   hint?: string
+  /**
+   * Leading icon rendered before the label in the dropdown and on the chip.
+   * Decorative only: it never changes the accessible name.
+   */
+  icon?: React.ReactNode
 }
 
 interface MultiSelectProps {
@@ -149,6 +136,14 @@ export function MultiSelect(props: MultiSelectProps) {
     const map = new Map<string, string>()
     for (const option of props.options) {
       if (option.hint) map.set(option.value, option.hint)
+    }
+    return map
+  }, [props.options])
+
+  const iconMap = React.useMemo(() => {
+    const map = new Map<string, React.ReactNode>()
+    for (const option of props.options) {
+      if (option.icon) map.set(option.value, option.icon)
     }
     return map
   }, [props.options])
@@ -316,8 +311,17 @@ export function MultiSelect(props: MultiSelectProps) {
                 {visibleValues.map((value) => {
                   const label = labelMap.get(value) ?? value
                   const hint = hintMap.get(value)
+                  const icon = iconMap.get(value)
                   return (
                     <ComboboxChip key={value}>
+                      {icon && (
+                        <span
+                          aria-hidden='true'
+                          className='inline-flex shrink-0'
+                        >
+                          {icon}
+                        </span>
+                      )}
                       {props.copyChipOnClick ? (
                         <button
                           type='button'
@@ -401,6 +405,7 @@ export function MultiSelect(props: MultiSelectProps) {
               const isCreate = canCreate && item === trimmedInput
               const label = labelMap.get(item) ?? item
               const hint = hintMap.get(item)
+              const icon = iconMap.get(item)
               return (
                 <ComboboxItem
                   key={item}
@@ -424,6 +429,14 @@ export function MultiSelect(props: MultiSelectProps) {
                     </>
                   ) : (
                     <>
+                      {icon && (
+                        <span
+                          aria-hidden='true'
+                          className='inline-flex shrink-0'
+                        >
+                          {icon}
+                        </span>
+                      )}
                       <span className='truncate'>{label}</span>
                       {hint && (
                         <span

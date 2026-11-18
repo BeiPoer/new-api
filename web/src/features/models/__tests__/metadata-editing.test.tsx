@@ -1,24 +1,13 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { Row } from '@tanstack/react-table'
-import { render, screen, waitFor, cleanup, act } from '@testing-library/react'
+import {
+  render,
+  screen,
+  waitFor,
+  cleanup,
+  act,
+  fireEvent,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AxiosError } from 'axios'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -357,6 +346,96 @@ describe('metadata editing', () => {
         }),
         { skipBusinessError: true, skipErrorHandler: true }
       )
+      client.clear()
+    }
+  )
+
+  it.each([undefined, 0])(
+    'does not copy a vendor to the next model when its vendor_id is %s',
+    async (vendorId) => {
+      const second = {
+        ...model,
+        id: 8,
+        model_name: 'unassigned-model',
+        vendor_id: vendorId,
+      }
+      let resolveDetail!: (value: Awaited<ReturnType<typeof api.get>>) => void
+      const detail = new Promise<Awaited<ReturnType<typeof api.get>>>(
+        (resolve) => {
+          resolveDetail = resolve
+        }
+      )
+      const get = vi.spyOn(api, 'get').mockImplementation(async (url) => {
+        if (url === '/api/models/7') {
+          return { data: { success: true, data: model } }
+        }
+        if (url === '/api/models/8') return detail
+        if (url === '/api/vendors/') {
+          return {
+            data: {
+              success: true,
+              data: {
+                items: [{ id: 3, name: 'Existing vendor' }],
+              },
+            },
+          }
+        }
+        throw new Error(`Unexpected GET ${url}`)
+      })
+      const put = vi
+        .spyOn(api, 'put')
+        .mockResolvedValue({ data: { success: true } })
+      const client = new QueryClient({
+        defaultOptions: {
+          queries: { retry: false },
+          mutations: { retry: false },
+        },
+      })
+      const close = vi.fn()
+      const tree = (currentRow: Model, open: boolean) => (
+        <QueryClientProvider client={client}>
+          <ModelMutateDrawer
+            open={open}
+            currentRow={currentRow}
+            onOpenChange={close}
+          />
+        </QueryClientProvider>
+      )
+      const view = render(tree(model, true))
+      await waitFor(() =>
+        expect(screen.getByRole('combobox', { name: 'Vendor' })).toHaveValue(
+          'Existing vendor'
+        )
+      )
+      fireEvent.click(screen.getAllByRole('button', { name: 'Close' })[0])
+      expect(close).toHaveBeenCalledWith(false)
+      view.rerender(tree(model, false))
+      await waitFor(() =>
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      )
+      view.rerender(tree(second, true))
+      await waitFor(() => expect(get).toHaveBeenCalledWith('/api/models/8'))
+      expect(
+        screen.getByRole('button', { name: 'Save metadata' })
+      ).toBeDisabled()
+      await act(async () =>
+        resolveDetail({ data: { success: true, data: second } })
+      )
+      await waitFor(() =>
+        expect(screen.getByLabelText('Model Name *')).toHaveValue(
+          'unassigned-model'
+        )
+      )
+      expect(screen.getByRole('combobox', { name: 'Vendor' })).toHaveValue('')
+      fireEvent.click(screen.getByRole('button', { name: 'Save metadata' }))
+      await waitFor(() =>
+        expect(put).toHaveBeenCalledWith(
+          '/api/models/',
+          expect.objectContaining({ id: 8, vendor_id: 0 }),
+          { skipBusinessError: true, skipErrorHandler: true }
+        )
+      )
+      view.unmount()
       client.clear()
     }
   )

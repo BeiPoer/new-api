@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { useId, useState } from 'react'
@@ -29,7 +11,7 @@ import {
   useCanEditModelPricing,
   invalidateModelPricing,
 } from '@/features/model-pricing/api'
-import { createServerError } from '@/lib/server-error-message'
+import { createServerError, getServerMessage } from '@/lib/server-error-message'
 
 import { deleteModel, deleteModels } from '../../api'
 import type { Model } from '../../types'
@@ -92,8 +74,9 @@ export function ModelDeleteDialog(props: ModelDeleteDialogProps) {
       ? t('Delete model "{{name}}"?', { name: props.models[0].model_name })
       : t('Delete {{count}} models?', { count: props.models.length })
   let errorMessage = mutation.error?.message
-  if (isAxiosError<{ message?: string }>(mutation.error)) {
-    errorMessage = mutation.error.response?.data.message || errorMessage
+  if (isAxiosError(mutation.error)) {
+    errorMessage =
+      getServerMessage(mutation.error.response?.data) || errorMessage
   }
   return (
     <ConfirmDialog

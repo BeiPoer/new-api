@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { useQuery } from '@tanstack/react-query'
 import {
   Mail,
@@ -30,9 +12,9 @@ import {
 } from 'lucide-react'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SiGithub, SiDiscord } from 'react-icons/si'
 import { toast } from 'sonner'
 
+import { IconGithub, IconDiscord } from '@/assets/brand-icons'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Dialog } from '@/components/dialog'
 import { StatusBadge } from '@/components/status-badge'
@@ -47,6 +29,7 @@ import {
 } from '@/components/ui/tooltip'
 import { handleServerError } from '@/lib/handle-server-error'
 import { indexCustomOAuthBindings, type CustomOAuthBinding } from '@/lib/oauth'
+import { AuthOperationError } from '@/lib/secure-verification'
 import { requireServerSuccess } from '@/lib/server-error-message'
 import { statusQueryOptions } from '@/lib/status-query'
 
@@ -57,6 +40,7 @@ import {
   adminUnbindCustomOAuth,
 } from '../../api'
 import type { User } from '../../types'
+import { useUsers } from '../users-provider'
 
 interface Props {
   open: boolean
@@ -108,14 +92,14 @@ const BUILTIN_BINDINGS: ReadonlyArray<{
     key: 'github',
     field: 'github_id',
     label: 'GitHub',
-    icon: <SiGithub className='h-4 w-4' />,
+    icon: <IconGithub className='h-4 w-4' />,
     statusKey: 'github_oauth',
   },
   {
     key: 'discord',
     field: 'discord_id',
     label: 'Discord',
-    icon: <SiDiscord className='h-4 w-4' />,
+    icon: <IconDiscord className='h-4 w-4' />,
     statusKey: 'discord_oauth',
   },
   {
@@ -164,6 +148,7 @@ function CustomProviderIcon(props: { iconUrl?: string }) {
 
 export function UserBindingDialog(props: Props) {
   const { t } = useTranslation()
+  const { requestVerification, verificationActive } = useUsers()
   const [user, setUser] = useState<User | null>(null)
   const [oauthBindings, setOauthBindings] = useState<CustomOAuthBinding[]>([])
   const [loading, setLoading] = useState(false)
@@ -281,13 +266,37 @@ export function UserBindingDialog(props: Props) {
     if (!unbindTarget || !props.userId) return
     setUnbinding(true)
     try {
+      const userId = props.userId
+      const verification = {
+        scope: 'admin.user.binding.clear',
+        title: t('Verify to unbind account'),
+        description: t(
+          'Confirm your identity before unbinding {{provider}} from this user.',
+          { provider: unbindTarget.label }
+        ),
+      } as const
       let res
       if (unbindTarget.type === 'builtin') {
-        res = await adminClearUserBinding(props.userId, unbindTarget.key)
+        const proof = await requestVerification({
+          ...verification,
+          context: { user_id: userId, binding_type: unbindTarget.key },
+        })
+        if (!proof) return
+        res = await adminClearUserBinding(
+          userId,
+          unbindTarget.key,
+          proof.proof_token
+        )
       } else if (unbindTarget.providerId) {
+        const proof = await requestVerification({
+          ...verification,
+          context: { user_id: userId, provider_id: unbindTarget.providerId },
+        })
+        if (!proof) return
         res = await adminUnbindCustomOAuth(
-          props.userId,
-          unbindTarget.providerId
+          userId,
+          unbindTarget.providerId,
+          proof.proof_token
         )
       }
       if (res?.success) {
@@ -300,7 +309,7 @@ export function UserBindingDialog(props: Props) {
         handleServerError(res, t('Unbind failed'))
       }
     } catch (error) {
-      handleServerError(error, t('Unbind failed'))
+      handleServerError(AuthOperationError.from(error), t('Unbind failed'))
     } finally {
       setUnbinding(false)
       setUnbindTarget(null)
@@ -430,7 +439,7 @@ export function UserBindingDialog(props: Props) {
       </Dialog>
 
       <ConfirmDialog
-        open={!!unbindTarget}
+        open={!!unbindTarget && !verificationActive}
         onOpenChange={(open) => !open && setUnbindTarget(null)}
         title={t('Confirm Unbind')}
         desc={t(

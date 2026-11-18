@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
@@ -448,6 +430,49 @@ test('edits image cache pricing and preserves an explicitly free cache lane', ()
   expect(
     screen.getByRole('checkbox', { name: 'Include Image cache input price' })
   ).toBeChecked()
+})
+
+test('keeps an OpenAI 12-hour cache write price through edits and labels the default write as 30 minutes', async () => {
+  const source =
+    'tier("base", p * 10 + c * 40 + cr * 1 + cc * 12.5 + cc12h * 25)'
+  const onBillingExprChange = vi.fn()
+  render(
+    <TieredPricingEditor
+      billingExpr={source}
+      requestRuleExpr=''
+      onBillingExprChange={onBillingExprChange}
+      onRequestRuleExprChange={vi.fn()}
+    />
+  )
+  const user = userEvent.setup()
+  const tier = within(screen.getByRole('group', { name: 'Pricing tier base' }))
+  expect(
+    tier.getByRole('textbox', { name: 'Cache Creation (30m)' })
+  ).toHaveValue('12.5')
+  expect(
+    tier.getByRole('textbox', { name: 'Cache create (12h) price' })
+  ).toHaveValue('25')
+  expect(
+    tier.getByRole('checkbox', { name: 'Include Cache create (1h) price' })
+  ).not.toBeChecked()
+  expect(onBillingExprChange).not.toHaveBeenCalled()
+
+  fireEvent.change(tier.getByRole('textbox', { name: 'Input price' }), {
+    target: { value: '11' },
+  })
+  expect(onBillingExprChange).toHaveBeenLastCalledWith(
+    source.replace('p * 10', 'p * 11')
+  )
+
+  await user.click(
+    tier.getByRole('checkbox', { name: 'Include Cache create (12h) price' })
+  )
+  expect(onBillingExprChange).toHaveBeenLastCalledWith(
+    'tier("base", p * 11 + c * 40 + cr * 1 + cc * 12.5)'
+  )
+  expect(tier.getByRole('textbox', { name: 'Cache create price' })).toHaveValue(
+    '12.5'
+  )
 })
 
 describe('visual time billing editor', () => {

@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { z } from 'zod'
 
 import type { Model } from '../types'
@@ -34,7 +16,7 @@ export const modelFormSchema = z.object({
   description: z.string().default(''),
   icon: z.string().default(''),
   tags: z.array(z.string()).default([]),
-  vendor_id: z.number().optional(),
+  vendor_id: z.number(),
   endpoints: z.string().default(''),
   name_rule: z.number().min(0).max(3).default(0),
   status: z.boolean().default(true),
@@ -44,6 +26,20 @@ export const modelFormSchema = z.object({
 })
 
 export type ModelFormValues = z.infer<typeof modelFormSchema>
+
+export const MODEL_FORM_DEFAULT_VALUES: ModelFormValues = {
+  model_name: '',
+  description: '',
+  icon: '',
+  tags: [],
+  vendor_id: 0,
+  endpoints: '',
+  name_rule: 0,
+  status: true,
+  sync_official: true,
+  enable_groups: [],
+  quota_types: [],
+}
 
 // ============================================================================
 // Vendor Form Schema
@@ -76,7 +72,7 @@ export function transformModelToFormDefaults(model: Model): ModelFormValues {
     description: model.description || '',
     icon: model.icon || '',
     tags: parseTagsFromUtils(model.tags),
-    vendor_id: model.vendor_id,
+    vendor_id: model.vendor_id ?? 0,
     endpoints: model.endpoints || '',
     name_rule: model.name_rule || 0,
     status: model.status === 1,

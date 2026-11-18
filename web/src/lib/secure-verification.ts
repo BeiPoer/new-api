@@ -1,25 +1,8 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import axios from 'axios'
 
 import {
   getServerErrorMessageKey,
+  getServerMessage,
   safeServerErrorMessage,
 } from './server-error-message'
 
@@ -45,7 +28,7 @@ export class AuthOperationError extends Error {
           (error.response && error.response.status >= 500
             ? 'Please try again later.'
             : undefined) ||
-          error.response?.data?.message ||
+          getServerMessage(error.response?.data) ||
           error.message ||
           fallback,
         error.response?.data?.code,
@@ -75,7 +58,9 @@ export async function authResult<T>(
     const { data: response } = await request
     if (!response.success || response.data === undefined) {
       throw new AuthOperationError(
-        getServerErrorMessageKey(response) || response.message || fallback,
+        getServerErrorMessageKey(response) ||
+          getServerMessage(response) ||
+          fallback,
         response.code
       )
     }

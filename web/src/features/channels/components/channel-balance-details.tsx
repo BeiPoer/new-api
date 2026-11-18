@@ -1,0 +1,56 @@
+import { useTranslation } from 'react-i18next'
+
+import { toIntlLocale } from '@/i18n/languages'
+import { formatNumber, formatTimestampToDate } from '@/lib/format'
+import { resolveLocalizedText } from '@/lib/localized-text'
+import { cn } from '@/lib/utils'
+
+import type { ChannelBalanceResult } from '../types'
+
+type ChannelBalanceDetailsProps = {
+  result?: ChannelBalanceResult | null
+  /** Unix seconds of the last query; 0 when never queried. */
+  updatedTime?: number
+  className?: string
+}
+
+/**
+ * The limits of a balance with their reset times, when it was last queried
+ * and the last query error, one line each.
+ */
+export function ChannelBalanceDetails(props: ChannelBalanceDetailsProps) {
+  const { t, i18n } = useTranslation()
+  const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
+  const windows = props.result?.windows ?? []
+  const error = props.result?.error?.trim()
+  if (windows.length === 0 && !props.updatedTime && !error) return null
+
+  return (
+    <ul className={cn('space-y-0.5 text-xs', props.className)}>
+      {windows.map((window) => (
+        <li key={JSON.stringify(window)}>
+          {resolveLocalizedText(window.name, i18n.language) || t('Limit')}:{' '}
+          {formatNumber(window.used, locale)} /{' '}
+          {formatNumber(window.limit, locale)}
+          {window.unit ? ` ${window.unit}` : ''}
+          {window.resetAt ? (
+            <>
+              {' · '}
+              {t('Reset at:')} {formatTimestampToDate(window.resetAt)}
+            </>
+          ) : null}
+        </li>
+      ))}
+      {props.updatedTime ? (
+        <li>
+          {t('Last updated:')} {formatTimestampToDate(props.updatedTime)}
+        </li>
+      ) : null}
+      {error && (
+        <li className='wrap-anywhere'>
+          {t('Last error:')} {error}
+        </li>
+      )}
+    </ul>
+  )
+}
