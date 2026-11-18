@@ -20,7 +20,7 @@
 
 services:
   new-api:
-    image: ${NEW_API_IMAGE:-ghcr.io/beipoer/new-api:latest}
+    image: ${NEW_API_IMAGE:-ghcr.io/beipoer/new-api:cy5u}
     pull_policy: always
     container_name: new-api
     restart: always
