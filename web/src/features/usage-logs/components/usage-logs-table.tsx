@@ -1,24 +1,7 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
 import type { ColumnDef } from '@tanstack/react-table'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -41,6 +24,7 @@ import {
   LOG_TYPE_ALL_VALUE,
   LOG_TYPE_ENUM,
 } from '../constants'
+import { shouldShowBillingSource } from '../lib/billing-source'
 import { useColumnsByCategory } from '../lib/columns'
 import { parseLogOther } from '../lib/format'
 import { fetchLogsByCategory } from '../lib/utils'
@@ -84,6 +68,10 @@ interface UsageLogsTableProps {
 
 export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
   const { t } = useTranslation()
+  const getColumnClassName = useCallback(
+    () => (logCategory === 'common' ? 'py-2' : 'py-3.5'),
+    [logCategory]
+  )
   const {
     isAdminView: isAdmin,
     isRootView: isRoot,
@@ -92,19 +80,27 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
   const isMobile = useMediaQuery('(max-width: 640px)')
   const searchParams = route.useSearch()
   const userId = useAuthStore((state) => state.auth.user?.id)
-  const { data: showWalletSource = false } = useQuery({
-    queryKey: ['usage-log-wallet-source', isAdmin, userId],
+  const { data: showBillingSource = false } = useQuery({
+    queryKey: ['usage-log-billing-source', isAdmin, userId],
     enabled: logCategory === 'common' && userId != null,
     queryFn: async () => {
       if (isAdmin) {
-        const result = await getAdminPlans()
-        return result.success && (result.data?.length ?? 0) > 0
+        const plansResult = await getAdminPlans()
+        return shouldShowBillingSource({
+          isAdmin,
+          plans: plansResult.success ? plansResult.data : undefined,
+          subscriptions: undefined,
+        })
       }
 
-      const result = await getSelfSubscriptionFull()
-      const subscriptions =
-        result.data?.all_subscriptions ?? result.data?.subscriptions
-      return result.success && (subscriptions?.length ?? 0) > 0
+      const selfResult = await getSelfSubscriptionFull()
+      return shouldShowBillingSource({
+        isAdmin,
+        plans: undefined,
+        subscriptions: selfResult.success
+          ? selfResult.data?.subscriptions
+          : undefined,
+      })
     },
   })
 
@@ -189,7 +185,7 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
     logCategory,
     isAdmin,
     isRoot,
-    showWalletSource
+    showBillingSource
   )
   const isLoadingData = isLoading || (isFetching && !data)
 
@@ -263,7 +259,8 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
             key={row.id}
             row={row}
             className={cn('transition-colors', tintClass)}
-            getColumnClassName={() => (isCommon ? 'py-2' : 'py-3.5')}
+            getColumnClassName={getColumnClassName}
+            cellRenderColumns={table.options.columns}
           />
         )
       }}

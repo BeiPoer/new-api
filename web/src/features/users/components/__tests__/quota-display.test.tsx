@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   createMemoryHistory,
@@ -256,7 +238,7 @@ function UsersPage() {
 
 async function renderUsersList(emptyInvitation = false) {
   useAuthStore.getState().auth.setUser({ id: 1, username: 'admin', role: 100 })
-  const get = vi.spyOn(api, 'get').mockResolvedValue({
+  const usersResponse = {
     data: {
       success: true,
       data: {
@@ -281,7 +263,14 @@ async function renderUsersList(emptyInvitation = false) {
         total: 1,
       },
     },
-  })
+  }
+  const get = vi
+    .spyOn(api, 'get')
+    .mockImplementation(async (url) =>
+      url === '/api/group/'
+        ? { data: { success: true, data: ['default'] } }
+        : usersResponse
+    )
   const root = createRootRoute()
   const auth = createRoute({ getParentRoute: () => root, id: '_authenticated' })
   const users = createRoute({

@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import {
   fireEvent,
   render,
@@ -93,12 +75,12 @@ function deferred<T>() {
   return { promise, reject, resolve }
 }
 
-function drawerTree(currentRow: Redemption) {
+function drawerTree(currentRow: Redemption, open = true) {
   return (
     <I18nextProvider i18n={i18n}>
       <RedemptionsProvider>
         <RedemptionsMutateDrawer
-          open
+          open={open}
           currentRow={currentRow}
           onOpenChange={() => undefined}
         />
@@ -129,11 +111,14 @@ async function renderDrawer(
   renderedDrawer = { result: render(drawerTree(currentRow)) }
 }
 
-async function rerenderDrawer(currentRow: Redemption): Promise<void> {
+async function rerenderDrawer(
+  currentRow: Redemption,
+  open = true
+): Promise<void> {
   if (!renderedDrawer) {
     throw new Error('Expected a rendered redemption drawer')
   }
-  renderedDrawer.result.rerender(drawerTree(currentRow))
+  renderedDrawer.result.rerender(drawerTree(currentRow, open))
 }
 
 function getSaveButton(): HTMLButtonElement {
@@ -279,6 +264,68 @@ describe('redemption drawer', () => {
 
     expect(updates[0]?.quota).toBe(1000000)
   })
+
+  test('keeps a non-expiring code unchanged after closing an expiring code', async () => {
+    const first = { ...redemption(1), expired_time: 2000000000 }
+    const second = redemption(2)
+    const detail = deferred<{ data: unknown }>()
+    const updates: unknown[] = []
+    apiClient.get = (url) =>
+      url === '/api/redemption/1'
+        ? Promise.resolve({ data: { success: true, data: first } })
+        : detail.promise
+    apiClient.put = async (_url, data) => {
+      updates.push(data)
+      return { data: { success: true } }
+    }
+    await renderDrawer(first)
+    await waitForLoadedForm()
+    await waitFor(() => expect(screen.getByLabelText('Time')).toBeEnabled())
+    fireEvent.click(screen.getAllByRole('button', { name: 'Close' })[0])
+    await rerenderDrawer(first, false)
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    )
+    await rerenderDrawer(second)
+    expect(screen.getByRole('button', { name: 'Loading...' })).toBeDisabled()
+    detail.resolve({ data: { success: true, data: second } })
+    await waitForLoadedForm()
+    expect(screen.getByRole('button', { name: 'Never expires' })).toBeVisible()
+    expect(screen.getByLabelText('Time')).toBeDisabled()
+    fireEvent.click(getSaveButton())
+    await waitFor(() =>
+      expect(updates).toEqual([
+        expect.objectContaining({ id: 2, expired_time: 0 }),
+      ])
+    )
+  })
+
+  test.each(['Never', 'Clear'])(
+    'submits a non-expiring code when its date is cleared with %s',
+    async (action) => {
+      const original = { ...redemption(1), expired_time: 2000000000 }
+      const updates: unknown[] = []
+      apiClient.get = async () => ({ data: { success: true, data: original } })
+      apiClient.put = async (_url, data) => {
+        updates.push(data)
+        return { data: { success: true } }
+      }
+      await renderDrawer(original)
+      await waitForLoadedForm()
+      await waitFor(() => expect(screen.getByLabelText('Time')).toBeEnabled())
+      fireEvent.click(screen.getByRole('button', { name: action }))
+      expect(
+        screen.getByRole('button', { name: 'Never expires' })
+      ).toBeVisible()
+      expect(screen.getByLabelText('Time')).toBeDisabled()
+      fireEvent.click(getSaveButton())
+      await waitFor(() =>
+        expect(updates).toEqual([
+          expect.objectContaining({ id: 1, expired_time: 0 }),
+        ])
+      )
+    }
+  )
 
   test('ignores an older response after switching records', async () => {
     const first = redemption(1, 500001)

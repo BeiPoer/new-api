@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { splitBillingExprAndRequestRules } from '@/features/pricing/lib/billing-expr'
 import { splitPluginBillingExprKey } from '@/features/pricing/lib/plugin-pricing'
 
@@ -87,14 +69,6 @@ export const getModeLabel = (mode?: string) => {
   if (mode === 'per-request') return 'Per-request (deprecated)'
   if (mode === 'tiered_expr') return 'Expression'
   return 'Per-token (deprecated)'
-}
-
-export const getModeVariant = (
-  mode?: string
-): 'warning' | 'info' | 'success' => {
-  if (mode === 'per-request') return 'warning'
-  if (mode === 'tiered_expr') return 'info'
-  return 'success'
 }
 
 const getExpressionSummary = (
@@ -313,4 +287,27 @@ export const getSnapshotSignature = (snapshot?: ModelPricingSnapshot) => {
       ([a], [b]) => a.localeCompare(b)
     ),
   })
+}
+
+/** One model's saved price next to its draft; the saved price is shown first. */
+export const buildModelRow = (
+  name: string,
+  saved?: ModelPricingSnapshot,
+  draft?: ModelPricingSnapshot
+): ModelRow => ({
+  ...(saved ?? draft ?? { name, billingMode: 'per-token', hasConflict: false }),
+  saved,
+  draft,
+  isDraftChanged: getSnapshotSignature(saved) !== getSnapshotSignature(draft),
+  isDraftDeleted: Boolean(saved && !draft),
+  isDraftNew: Boolean(!saved && draft),
+})
+
+export type PriceChangeKind = 'added' | 'modified' | 'deleted'
+
+export const getPriceChangeKind = (row: ModelRow): PriceChangeKind | null => {
+  if (row.isDraftDeleted) return 'deleted'
+  if (row.isDraftNew) return 'added'
+  if (row.isDraftChanged) return 'modified'
+  return null
 }

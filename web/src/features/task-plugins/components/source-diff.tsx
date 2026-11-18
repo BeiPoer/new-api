@@ -1,26 +1,16 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/lib/utils'
 
-type SourceDiffProps = { before: string; after: string; className?: string }
+type SourceDiffProps = {
+  before: string
+  after: string
+  className?: string
+  /** Accessible name of the diff; defaults to "Source diff". */
+  label?: string
+  /** Shown when nothing changed; defaults to "No source changes". */
+  emptyText?: string
+}
 
 type DiffLine = { id: string; kind: 'same' | 'added' | 'removed'; text: string }
 
@@ -68,7 +58,7 @@ export function SourceDiff(props: SourceDiffProps) {
         role='status'
         className='text-muted-foreground rounded-md border px-3 py-6 text-center text-sm'
       >
-        {t('No source changes')}
+        {props.emptyText ?? t('No source changes')}
       </p>
     )
   }
@@ -79,7 +69,7 @@ export function SourceDiff(props: SourceDiffProps) {
         'max-h-96 overflow-auto rounded-md border font-mono text-xs',
         props.className
       )}
-      aria-label={t('Source diff')}
+      aria-label={props.label ?? t('Source diff')}
     >
       {lines.map((line) => {
         let prefix = ' '

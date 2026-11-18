@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import type { AuthUser } from '@/stores/auth-store'
 
 import { ROLE } from './roles'
@@ -112,4 +94,34 @@ export function normalizeAdminPermissions(
     normalized[resource.resource] = actions
   }
   return normalized
+}
+
+// permissionMatrixToScopes lists the granted cells of a matrix as sorted
+// `resource:action` scope keys.
+export function permissionMatrixToScopes(
+  matrix: AdminPermissionMatrix
+): string[] {
+  const scopes: string[] = []
+  for (const [resource, actions] of Object.entries(matrix)) {
+    for (const [action, granted] of Object.entries(actions)) {
+      if (granted) scopes.push(`${resource}:${action}`)
+    }
+  }
+  return scopes.sort()
+}
+
+// scopesToPermissionMatrix is the inverse of permissionMatrixToScopes; keys
+// without a separator are ignored.
+export function scopesToPermissionMatrix(
+  scopes: readonly string[]
+): AdminPermissionMatrix {
+  const matrix: AdminPermissionMatrix = {}
+  for (const scope of scopes) {
+    const separator = scope.indexOf(':')
+    if (separator <= 0) continue
+    const resource = scope.slice(0, separator)
+    const action = scope.slice(separator + 1)
+    matrix[resource] = { ...matrix[resource], [action]: true }
+  }
+  return matrix
 }

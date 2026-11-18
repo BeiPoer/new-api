@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { Code2, Copy, Eye, Plus, Trash2 } from 'lucide-react'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -41,7 +23,27 @@ const DEFAULT_PRICES: Record<string, number> = {
   'web_search_preview:gpt-4.1-mini*': 25.0,
   file_search: 2.5,
   google_search: 14.0,
+  'google_search:gemini-2.5*': 0.0,
+  'google_search:gemini-2.0*': 0.0,
+  'google_search:gemini-1.5*': 0.0,
+  'google_search_grounded_prompt:gemini-2.5*': 35.0,
+  'google_search_grounded_prompt:gemini-2.0*': 35.0,
+  'google_search_grounded_prompt:gemini-1.5*': 35.0,
   image_generation: 150.0,
+  search_std: 10.0,
+  search_pro: 30.0,
+  search_pro_sogou: 50.0,
+  search_pro_quark: 50.0,
+  search_strategy_turbo: 3.0,
+  search_strategy_max: 4.0,
+  search_strategy_agent: 4.0,
+  search_strategy_agent_max: 4.0,
+  bing_web_search: 14.0,
+  'web_search:grok*': 5.0,
+  x_search_posts: 5.0,
+  x_search_profiles: 10.0,
+  deepseek_search: 0.75,
+  deepseek_fetch: 0.75,
 }
 
 type ToolPriceRow = {
@@ -330,7 +332,7 @@ export const ToolPriceSettings = memo(function ToolPriceSettings({
                     <Input
                       type='number'
                       min={0}
-                      step={0.5}
+                      step={0.0001}
                       value={row.price}
                       aria-invalid={isInvalid}
                       aria-label={`${t('Price ($/1K calls)')}: ${row.key || t('Tool identifier')}`}

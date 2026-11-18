@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
@@ -190,15 +172,15 @@ test('a draft request with only the upstream name focuses the request field, and
       draftRequest={{ from: '', to: 'up-1', token: 1 }}
     />
   )
-  await waitFor(() =>
-    expect(
-      screen.getAllByRole('combobox', { name: 'Request Model Name' })
-    ).toHaveLength(2)
-  )
+  // The row is committed before its passive effect moves focus.
+  await waitFor(() => {
+    const requestFields = screen.getAllByRole('combobox', {
+      name: 'Request Model Name',
+    })
+    expect(requestFields).toHaveLength(2)
+    expect(requestFields[1]).toHaveFocus()
+  })
   expect(screen.getByDisplayValue('up-1')).toBeVisible()
-  expect(
-    screen.getAllByRole('combobox', { name: 'Request Model Name' })[1]
-  ).toHaveFocus()
 
   view.rerender(
     <ModelMappingEditor

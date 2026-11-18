@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { parseCurrencyDisplayType } from '@/lib/currency'
 
 import { CheckinSettingsSection } from '../general/checkin-settings-section'
@@ -61,14 +43,13 @@ const BILLING_SECTIONS = [
       <QuotaSettingsSection
         defaultValues={{
           QuotaForNewUser: settings.QuotaForNewUser,
-          PreConsumedQuota: settings.PreConsumedQuota,
           QuotaForInviter: settings.QuotaForInviter,
           QuotaForInvitee: settings.QuotaForInvitee,
           TopUpLink: settings.TopUpLink,
-          general_setting: {
-            docs_link: settings['general_setting.docs_link'],
-          },
           quota_setting: {
+            trust_quota_usd: settings['quota_setting.trust_quota_usd'],
+            pre_consume_multiplier:
+              settings['quota_setting.pre_consume_multiplier'],
             enable_free_model_pre_consume:
               settings['quota_setting.enable_free_model_pre_consume'],
           },
@@ -147,6 +128,11 @@ const BILLING_SECTIONS = [
           AlipaySubscriptionReturnURL: settings.AlipaySubscriptionReturnURL,
           AlipayMinTopUp: settings.AlipayMinTopUp,
           AlipayExchangeRate: settings.AlipayExchangeRate,
+          EpaySignType: settings['payment_setting.epay_sign_type'],
+          EpayMerchantPrivateKey:
+            settings['payment_setting.epay_merchant_private_key'],
+          EpayPlatformPublicKey:
+            settings['payment_setting.epay_platform_public_key'],
           Price: settings.Price,
           MinTopUp: settings.MinTopUp,
           CustomCallbackAddress: settings.CustomCallbackAddress,

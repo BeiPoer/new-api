@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { flexRender, type Cell } from '@tanstack/react-table'
 import { ChevronRight, KeyRound } from 'lucide-react'
 import { useState } from 'react'
@@ -32,7 +14,7 @@ import dayjs from '@/lib/dayjs'
 import { formatLogQuota, formatTimestampToDate } from '@/lib/format'
 
 import type { UsageLog } from '../data/schema'
-import { formatModelName, parseLogOther } from '../lib/format'
+import { formatModelName, logTokenName, parseLogOther } from '../lib/format'
 import {
   getLogTypeConfig,
   isDisplayableLogType,
@@ -106,7 +88,7 @@ export function CommonLogMobileCard<TData>(props: {
     },
     token: {
       label: t('Token'),
-      value: log.token_name,
+      value: logTokenName(log, t),
       visible: displayable && props.cells.has('token_name') && !!log.token_name,
       sensitive: true,
     },
@@ -194,6 +176,7 @@ export function CommonLogMobileCard<TData>(props: {
                   className='min-h-5 max-w-full min-w-0 justify-end'
                   isStream={log.is_stream}
                   isTask={other?.is_task === true}
+                  isSyncTask={other?.task_sync === true}
                   tokensPerSecond={
                     log.use_time > 0 && log.completion_tokens > 0
                       ? log.completion_tokens / log.use_time

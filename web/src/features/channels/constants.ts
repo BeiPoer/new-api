@@ -1,21 +1,7 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
+export const CHANNEL_PRIORITY_GUIDE_KEYS = {
+  card: 'channels:priority-drag-guide:card:v1',
+  table: 'channels:priority-drag-guide:v1',
+} as const
 // ============================================================================
 // Channel Types (from constant/channel.go)
 // All label/name values are i18n keys; use t(value) when displaying.
@@ -84,7 +70,7 @@ export const CHANNEL_TYPES = {
   51: 'Jimeng',
   52: 'Vidu',
   53: 'Submodel',
-  54: 'DoubaoVideo',
+  54: 'Doubao',
   55: 'Sora',
   56: 'Replicate',
   57: 'ChatGPT Subscription (Codex)',
@@ -157,7 +143,8 @@ export const CHANNEL_PROVIDER_PRESENTATION: Partial<
   52: { descriptionKey: 'Connect to Vidu video generation services' },
   53: { descriptionKey: 'Connect to Submodel model services' },
   54: {
-    descriptionKey: 'Generate Doubao Seedance videos through Volcengine Ark',
+    descriptionKey:
+      'Connect to Doubao Seedance video and Seedream image generation through Volcengine Ark',
   },
   55: { descriptionKey: 'Connect to OpenAI Sora video generation services' },
   56: { descriptionKey: 'Access hosted model predictions through Replicate' },
@@ -171,7 +158,8 @@ export const CHANNEL_PROVIDER_PRESENTATION: Partial<
   },
   59: { descriptionKey: 'Connect to model services through a Sub2API gateway' },
   60: {
-    descriptionKey: 'Connect to model services from another New API instance',
+    descriptionKey:
+      'Connect to New API model services with support for multiple task plugins',
   },
   62: { descriptionKey: 'Connect to self-hosted models served by vLLM' },
   63: { descriptionKey: 'Connect to self-hosted models served by SGLang' },
@@ -522,6 +510,8 @@ export const MODEL_FETCHABLE_TYPES = new Set([
   CHANNEL_TYPE_SGLANG,
 ])
 
+// A plugin channel relays the formats its plugin's routes serve, so it takes
+// every field control, as an Advanced Custom channel does.
 export const FIELD_PASSTHROUGH_TYPES = new Set([
   1,
   14,
@@ -529,6 +519,7 @@ export const FIELD_PASSTHROUGH_TYPES = new Set([
   58,
   59,
   CHANNEL_TYPE_NEW_API,
+  CHANNEL_TYPE_TASK_PLUGIN,
   CHANNEL_TYPE_VLLM,
   CHANNEL_TYPE_SGLANG,
 ])
@@ -539,6 +530,7 @@ export const OPENAI_FIELD_PASSTHROUGH_TYPES = new Set([
   58,
   59,
   CHANNEL_TYPE_NEW_API,
+  CHANNEL_TYPE_TASK_PLUGIN,
   CHANNEL_TYPE_VLLM,
   CHANNEL_TYPE_SGLANG,
 ])
@@ -548,6 +540,7 @@ export const CLAUDE_FIELD_PASSTHROUGH_TYPES = new Set([
   58,
   59,
   CHANNEL_TYPE_NEW_API,
+  CHANNEL_TYPE_TASK_PLUGIN,
   CHANNEL_TYPE_VLLM,
   CHANNEL_TYPE_SGLANG,
 ])

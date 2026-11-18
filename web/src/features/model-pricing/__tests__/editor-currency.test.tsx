@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   act,
@@ -260,6 +242,12 @@ it.each([
     mode: 'claude_ttl',
     expression: 'tier("base", p * 2 + c * 4 + cr * 1 + cc * 3 + cc1h * 4.8)',
   },
+  {
+    name: 'custom-gpt',
+    ratio: 1.5,
+    mode: 'openai_ttl',
+    expression: 'tier("base", p * 2 + c * 4 + cr * 1 + cc * 3 + cc12h * 6)',
+  },
 ])(
   'keeps configured cache prices visible on both sides for $name',
   async (fixture) => {
@@ -299,6 +287,7 @@ it.each([
           ? 'Cache write price'
           : 'Cache create price'
       if (fixture.mode === 'claude_ttl') label = 'Cache Creation (5m)'
+      if (fixture.mode === 'openai_ttl') label = 'Cache Creation (30m)'
       expect(
         within(panel).getByText(label).nextElementSibling
       ).toHaveTextContent(`$${fixture.ratio * 2} / 1M token`)
@@ -309,6 +298,15 @@ it.each([
       } else {
         expect(
           within(panel).queryByText('Cache create (1h) price')
+        ).not.toBeInTheDocument()
+      }
+      if (fixture.mode === 'openai_ttl') {
+        expect(
+          within(panel).getByText('Cache create (12h) price').nextElementSibling
+        ).toHaveTextContent('$6 / 1M token')
+      } else {
+        expect(
+          within(panel).queryByText('Cache create (12h) price')
         ).not.toBeInTheDocument()
       }
     }

@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   cleanup,
@@ -469,6 +451,61 @@ it('filters own access history by result, generation and time and resets paginat
   )
   expect(screen.queryByLabelText('Username')).not.toBeInTheDocument()
   expect(screen.getByRole('table').style.minWidth).toMatch(/max\(100%, \d+px\)/)
+})
+
+it('opens on the current token when asked and resets back to it', async () => {
+  const get = vi.spyOn(api, 'get').mockResolvedValue({
+    data: { success: true, data: { items: [], total: 0 } },
+  })
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  render(
+    <QueryClientProvider client={client}>
+      <AuditLogViewer
+        scope='self'
+        accessOnly
+        currentTokenRef={'a'.repeat(64)}
+        defaultTokenScope='current'
+      />
+    </QueryClientProvider>
+  )
+  const user = userEvent.setup()
+  await waitFor(() => expect(get).toHaveBeenCalled())
+  expect(get.mock.calls[0]).toEqual([
+    '/api/audit/self',
+    {
+      params: expect.objectContaining({
+        category: 'access_token',
+        token_ref: 'a'.repeat(64),
+      }),
+    },
+  ])
+  const reset = screen.getByRole('button', { name: 'Reset' })
+  expect(reset).toBeDisabled()
+  await user.click(screen.getByRole('combobox', { name: 'Token scope' }))
+  await user.click(await screen.findByRole('option', { name: 'All tokens' }))
+  await waitFor(() =>
+    expect(get.mock.lastCall?.[1]?.params).not.toHaveProperty('token_ref')
+  )
+  await user.click(screen.getByRole('combobox', { name: 'Result' }))
+  await user.click(await screen.findByRole('option', { name: 'Failed' }))
+  await waitFor(() =>
+    expect(get).toHaveBeenLastCalledWith('/api/audit/self', {
+      params: expect.objectContaining({ success: 'false' }),
+    })
+  )
+  await user.click(reset)
+  await waitFor(() =>
+    expect(get).toHaveBeenLastCalledWith('/api/audit/self', {
+      params: expect.objectContaining({ token_ref: 'a'.repeat(64) }),
+    })
+  )
+  expect(get.mock.lastCall?.[1]?.params).not.toHaveProperty('success')
+  expect(screen.getByRole('combobox', { name: 'Token scope' })).toHaveValue(
+    'Current token'
+  )
+  expect(reset).toBeDisabled()
 })
 
 it('a failed history query exposes retry and no empty history claim', async () => {

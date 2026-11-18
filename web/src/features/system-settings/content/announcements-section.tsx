@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus, Trash2, Save } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
@@ -60,7 +42,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { toIntlLocale } from '@/i18n/languages'
 import dayjs from '@/lib/dayjs'
+import { formatTimestampRelative } from '@/lib/format'
 import { handleServerError } from '@/lib/handle-server-error'
 
 import { SettingsSwitchField } from '../components/settings-form-layout'
@@ -134,7 +118,8 @@ export function AnnouncementsSection({
   enabled,
   data,
 }: AnnouncementsSectionProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
   const updateOption = useUpdateOption()
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [isEnabled, setIsEnabled] = useState(enabled)
@@ -297,19 +282,6 @@ export function AnnouncementsSection({
     })
   }, [announcements])
 
-  const getRelativeTime = (date: string) => {
-    const now = new Date()
-    const past = new Date(date)
-    const diffMs = now.getTime() - past.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMins / 60)
-    const diffDays = Math.floor(diffHours / 24)
-
-    if (diffMins < 60) return `${diffMins}m ago`
-    if (diffHours < 24) return `${diffHours}h ago`
-    return `${diffDays}d ago`
-  }
-
   return (
     <SettingsSection title={t('Announcements')}>
       <div className='space-y-4'>
@@ -387,7 +359,11 @@ export function AnnouncementsSection({
               cell: (announcement) => (
                 <div className='flex flex-col gap-1'>
                   <span className='text-sm font-medium'>
-                    {getRelativeTime(announcement.publishDate)}
+                    {formatTimestampRelative(
+                      new Date(announcement.publishDate).getTime(),
+                      'milliseconds',
+                      locale
+                    )}
                   </span>
                   <span className='text-muted-foreground text-xs'>
                     {dayjs(announcement.publishDate).format(

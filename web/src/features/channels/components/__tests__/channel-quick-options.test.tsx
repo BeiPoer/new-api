@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   createMemoryHistory,
@@ -40,8 +22,12 @@ import {
 import { CHANNEL_TYPE_ADVANCED_CUSTOM } from '../../lib/advanced-custom'
 import {
   CHANNEL_FORM_DEFAULT_VALUES,
+  transformChannelToFormDefaults,
+  transformFormDataToCreatePayload,
+  transformFormDataToUpdatePayload,
   type ChannelFormValues,
 } from '../../lib/channel-form'
+import { channelSchema } from '../../types'
 import { ChannelQuickOptions } from '../channel-quick-options'
 import type { PassthroughKind } from '../dialogs/passthrough-warning-dialog'
 
@@ -220,6 +206,43 @@ describe('header passthrough quick option', () => {
 })
 
 describe('body passthrough quick option', () => {
+  test.each([
+    { channelType: 1, enabled: true },
+    { channelType: CHANNEL_TYPE_ADVANCED_CUSTOM, enabled: true },
+    { channelType: CHANNEL_TYPE_ADVANCED_CUSTOM, enabled: false },
+    { channelType: CHANNEL_TYPE_ADVANCED_CUSTOM, enabled: undefined },
+  ])(
+    'channel type $channelType preserves body passthrough $enabled through create, update and reload',
+    ({ channelType, enabled }) => {
+      const channel = channelSchema.parse({
+        id: 42,
+        name: 'Body passthrough channel',
+        type: channelType,
+        key: '',
+        status: 1,
+        created_time: 0,
+        test_time: 0,
+        response_time: 0,
+        balance_updated_time: 0,
+        setting: JSON.stringify({ pass_through_body_enabled: enabled }),
+      })
+      const values = transformChannelToFormDefaults(channel)
+      const payloads = [
+        transformFormDataToCreatePayload(values).channel,
+        transformFormDataToUpdatePayload(values, channel.id),
+      ]
+      for (const payload of payloads) {
+        expect(
+          JSON.parse(payload.setting ?? '{}').pass_through_body_enabled
+        ).toBe(enabled === true)
+        expect(
+          transformChannelToFormDefaults({ ...channel, ...payload })
+            .pass_through_body_enabled
+        ).toBe(enabled === true)
+      }
+    }
+  )
+
   test('enabling asks for confirmation and disabling does not', async () => {
     const user = userEvent.setup()
     const confirm = vi.fn(() => Promise.resolve(true))

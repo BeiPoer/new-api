@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
@@ -51,7 +33,7 @@ const migratedProviders = [
   { type: 50, label: 'Kling', key: 'kling' },
   { type: 51, label: 'Jimeng', key: 'jimeng' },
   { type: 52, label: 'Vidu', key: 'vidu' },
-  { type: 54, label: 'DoubaoVideo', key: 'doubao' },
+  { type: 54, label: 'Doubao', key: 'doubao' },
   { type: 55, label: 'Sora', key: 'sora' },
 ]
 const migratedPlugins = migratedProviders.map((provider) => ({
@@ -417,7 +399,7 @@ test('creation searches legacy names and translated names through the replacemen
     fallbackLng: 'en',
     resources: {
       en: { translation: {} },
-      zh: { translation: { DoubaoVideo: '豆包视频' } },
+      zh: { translation: { Doubao: '豆包' } },
     },
   })
   const select = vi.fn()
@@ -439,13 +421,13 @@ test('creation searches legacy names and translated names through the replacemen
     </I18nextProvider>
   )
   const search = screen.getByRole('combobox')
-  await user.type(search, 'DoubaoVideo')
+  await user.type(search, 'Doubao')
   expect(
     screen.getByRole('option', { name: 'Ark Video Plugin doubao' })
   ).toBeVisible()
   await act(() => language.changeLanguage('zh'))
   await user.clear(search)
-  await user.type(search, '豆包视频')
+  await user.type(search, '豆包')
   await user.click(screen.getByRole('tab', { name: 'Plugins' }))
   expect(
     screen.getByRole('option', { name: 'Ark Video Plugin doubao' })

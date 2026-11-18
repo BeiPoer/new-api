@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { useQuery } from '@tanstack/react-query'
 import { VChart } from '@visactor/react-vchart'
 import type { EventParamsDefinition, IVChart } from '@visactor/vchart'
@@ -87,6 +69,7 @@ import type {
 import { formatQuota } from '@/lib/format'
 import { ROLE } from '@/lib/roles'
 import { requireServerSuccess } from '@/lib/server-error-message'
+import { useThemeColor } from '@/lib/theme-color'
 import { computeTimeRange } from '@/lib/time'
 import { useChartTheme } from '@/lib/use-chart-theme'
 import { cn } from '@/lib/utils'
@@ -256,6 +239,7 @@ function formatFlowMetricNumber(value: number): string {
 export function FlowCharts(props: FlowChartsProps) {
   const { t } = useTranslation()
   const { resolvedTheme, themeReady } = useChartTheme()
+  const textColor = useThemeColor('--foreground')
   const chartInstanceRef = useRef<IVChart | null>(null)
   const user = useAuthStore((state) => state.auth.user)
   const isRoot = Boolean(user?.role && user.role >= ROLE.SUPER_ADMIN)
@@ -456,13 +440,19 @@ export function FlowCharts(props: FlowChartsProps) {
   const chartTitle = t('Flow')
   const flowSpec = useMemo(
     () =>
-      buildFlowSankeySpec(flowData.flow, chartTitle, formatQuota, {
-        quota: t('Quota'),
-        tokens: t('Tokens'),
-        requests: t('Requests'),
-        share: t('Share'),
-      }),
-    [chartTitle, flowData.flow, t]
+      buildFlowSankeySpec(
+        flowData.flow,
+        chartTitle,
+        formatQuota,
+        {
+          quota: t('Quota'),
+          tokens: t('Tokens'),
+          requests: t('Requests'),
+          share: t('Share'),
+        },
+        textColor
+      ),
+    [chartTitle, flowData.flow, t, textColor]
   )
   const chartTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
   const chartKey = [
@@ -485,7 +475,7 @@ export function FlowCharts(props: FlowChartsProps) {
     isLoading,
     isError,
     linkCount: flowData.flow.links.length,
-    themeReady,
+    themeReady: themeReady && textColor !== undefined,
   })
   const flowErrorMessage =
     flowError instanceof Error

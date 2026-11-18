@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { Radio as RadioPrimitive } from '@base-ui/react/radio'
 import { RadioGroup as Radio } from '@base-ui/react/radio-group'
 import { CircleCheck, Palette, RotateCcw } from 'lucide-react'
@@ -54,6 +36,7 @@ import { useThemeCustomization } from '@/context/theme-customization-provider'
 import { useTheme } from '@/context/theme-provider'
 import {
   type ContentLayout,
+  resolveThemeFont,
   THEME_PRESETS,
   type ThemeFont,
   type ThemePreset,
@@ -305,28 +288,26 @@ function PresetConfig() {
 /**
  * Font options shown in the theme drawer.
  *
- * Each option renders a live "Aa" preview in the font it represents.
- * `Auto` deliberately leaves `fontFamily` undefined so the preview inherits
- * the currently active body font — that way the user sees what `Auto` will
- * actually look like for the active preset (Anthropic → serif glyphs,
- * everything else → sans glyphs) without us having to duplicate the
- * preset-default mapping in the UI.
+ * Each option previews the font it will select, including Auto when the
+ * user currently has an explicit font selected.
  */
 const FONT_OPTIONS: {
   value: ThemeFont
   label: string
-  // CSS font-family applied to the "Aa" preview. `undefined` = inherit
-  // from the current theme (used by the `default` option).
+  // Auto resolves its preview from the active preset.
   preview?: string
 }[] = [
   { value: 'default', label: 'Auto', preview: undefined },
-  { value: 'sans', label: 'Sans', preview: 'var(--font-sans)' },
+  { value: 'sans', label: 'Sans', preview: 'var(--font-public-sans)' },
   { value: 'serif', label: 'Serif', preview: 'var(--font-serif)' },
 ]
 
 function FontConfig() {
   const { t } = useTranslation()
   const { defaults, customization, setFont } = useThemeCustomization()
+  const autoFont = resolveThemeFont('default', customization.preset)
+  const autoFontFamily =
+    autoFont === 'serif' ? 'var(--font-serif)' : 'sans-serif'
   return (
     <div>
       <SectionTitle
@@ -367,13 +348,7 @@ function FontConfig() {
               <span
                 aria-hidden='true'
                 className='text-foreground absolute inset-0 flex items-center justify-center text-lg leading-none font-medium'
-                style={
-                  option.preview
-                    ? { fontFamily: option.preview }
-                    : // `font: inherit` defers to the active theme so the
-                      // "Auto" tile previews what the resolved font will be.
-                      { font: 'inherit', fontSize: '1.125rem' }
-                }
+                style={{ fontFamily: option.preview ?? autoFontFamily }}
               >
                 Aa
               </span>

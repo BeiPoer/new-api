@@ -1,31 +1,17 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Loader2 } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { z } from 'zod'
 
 import { Dialog } from '@/components/dialog'
 import { PasswordInput } from '@/components/password-input'
+import {
+  PasswordConfirmationStatus,
+  PasswordStrength,
+} from '@/components/password-strength'
 import { Turnstile } from '@/components/turnstile'
 import { Button } from '@/components/ui/button'
 import {
@@ -106,6 +92,11 @@ export function SignUpForm({
       password: '',
       confirmPassword: '',
     },
+  })
+  const passwordValue = useWatch({ control: form.control, name: 'password' })
+  const confirmationValue = useWatch({
+    control: form.control,
+    name: 'confirmPassword',
   })
 
   const emailValue = form.watch('email')
@@ -313,12 +304,17 @@ export function SignUpForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>{t('Password')}</FormLabel>
-              <FormControl>
+              <FormControl describedBy='sign-up-password-strength'>
                 <PasswordInput
                   placeholder={t('Enter password (8–128 characters)')}
+                  autoComplete='new-password'
                   {...field}
                 />
               </FormControl>
+              <PasswordStrength
+                id='sign-up-password-strength'
+                value={passwordValue}
+              />
               <FormMessage />
             </FormItem>
           )}
@@ -328,12 +324,22 @@ export function SignUpForm({
         <FormField
           control={form.control}
           name='confirmPassword'
-          render={({ field }) => (
+          render={({ field, fieldState }) => (
             <FormItem>
               <FormLabel>{t('Confirm password')}</FormLabel>
-              <FormControl>
-                <PasswordInput placeholder={t('Confirm password')} {...field} />
+              <FormControl describedBy='sign-up-password-confirmation-status'>
+                <PasswordInput
+                  placeholder={t('Confirm password')}
+                  autoComplete='new-password'
+                  {...field}
+                />
               </FormControl>
+              <PasswordConfirmationStatus
+                id='sign-up-password-confirmation-status'
+                password={passwordValue}
+                confirmation={confirmationValue}
+                hasFieldError={!!fieldState.error}
+              />
               <FormMessage />
             </FormItem>
           )}

@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   createMemoryHistory,
@@ -72,17 +54,14 @@ beforeEach(() => {
     .getState()
     .auth.setUser({ ...profile, permissions: { sidebar_settings: false } })
   vi.spyOn(api, 'get').mockImplementation(async (url) => {
-    if (url === '/api/user/token/status') {
+    if (url === '/api/user/access_tokens') {
+      return { data: { success: true, data: { items: [], legacy: null } } }
+    }
+    if (url === '/api/user/access_tokens/catalog') {
       return {
         data: {
           success: true,
-          data: {
-            exists: false,
-            token_ref: '',
-            created_at: null,
-            last_used_at: null,
-            last_used_ip: '',
-          },
+          data: { groups: [], max_tokens: 20, default_expiry_days: 30 },
         },
       }
     }
@@ -194,9 +173,7 @@ describe('security page migration', () => {
       'xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.46fr)]'
     )
     const access = screen.getByRole('region', { name: 'Sessions & Access' })
-    expect(
-      within(access).getByRole('heading', { name: 'Access Token' })
-    ).toBeVisible()
+    expect(within(access).getByText('Access tokens')).toBeVisible()
     expect(
       await within(access).findByText('No active login sessions')
     ).toBeVisible()

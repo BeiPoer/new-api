@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { isCancelledError } from '@tanstack/react-query'
 import { isCancel } from 'axios'
 import i18next from 'i18next'
@@ -154,6 +136,35 @@ function messageText(value: unknown): string | undefined {
   return value
 }
 
+/**
+ * The backend sends web console messages as English source text in
+ * `message_key` (a key of the locale files) plus `message_params`, and keeps
+ * the rendered English text in `message` for other API callers.
+ */
+export function getServerMessage(value: unknown): string | undefined {
+  if (!isRecord(value)) return undefined
+  if (typeof value.message_key === 'string' && value.message_key) {
+    return i18next.t(
+      value.message_key,
+      isRecord(value.message_params) ? value.message_params : undefined
+    )
+  }
+  return messageText(value.message)
+}
+
+/**
+ * Translate text the backend stores or sends as an English source key without
+ * params (task fail reasons, built-in group descriptions). The same fields also
+ * carry upstream errors and administrator text; those have no locale entry and
+ * are shown exactly as written, so interpolation and nesting stay off.
+ */
+export function translateServerText(
+  t: (key: string, options?: Record<string, unknown>) => string,
+  text: string
+): string {
+  return t(text, { skipInterpolation: true })
+}
+
 export function getServerErrorMessage(
   value: unknown,
   fallback?: string
@@ -184,7 +195,7 @@ export function getServerErrorMessage(
       ? messageText(source.error.message)
       : messageText(source.error)
     const message =
-      messageText(source.message) || detail || messageText(source.title)
+      getServerMessage(source) || detail || messageText(source.title)
     if (message) return message
   }
   const status = getServerErrorStatus(value)

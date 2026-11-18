@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { useMutation } from '@tanstack/react-query'
 import { Download } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -73,7 +55,7 @@ export function PluginUrlImportField(props: PluginUrlImportFieldProps) {
         return
       }
       if (error.reason === 'too_large') {
-        props.onError(t('Plugin source exceeds the 1 MiB limit.'))
+        props.onError(t('Plugin source exceeds the 8 MiB limit.'))
         return
       }
       if (error.reason === 'not_found') {
@@ -87,7 +69,7 @@ export function PluginUrlImportField(props: PluginUrlImportFieldProps) {
       }
       props.onError(
         t(
-          'Could not fetch this URL from the browser. The host may block cross-origin requests or be unreachable. Download the file and paste its source below.'
+          'Could not download from this address. Download the file yourself and paste its code below.'
         )
       )
     },
@@ -132,7 +114,7 @@ export function PluginUrlImportField(props: PluginUrlImportFieldProps) {
       </InputGroup>
       <FieldDescription id='task-plugin-url-hint'>
         {t(
-          'Fetched in your browser and placed in the source field below for review. GitHub and gist page URLs are rewritten to their raw URL automatically.'
+          'The file fills the code box below for review. GitHub and Gist page links also work.'
         )}
       </FieldDescription>
       {props.error ? <FieldError>{props.error}</FieldError> : null}

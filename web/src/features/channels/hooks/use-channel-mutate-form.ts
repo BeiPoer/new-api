@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -67,7 +49,9 @@ export function useChannelMutateForm(props: UseChannelMutateFormParams) {
   )
 
   return useMutation({
-    mutationFn: async (data: ChannelFormValues): Promise<string> => {
+    mutationFn: async (
+      data: ChannelFormValues
+    ): Promise<{ messageKey: string; channelId?: number }> => {
       if (props.isEditing && props.currentRow) {
         const payload = transformFormDataToUpdatePayload(
           data,
@@ -101,7 +85,7 @@ export function useChannelMutateForm(props: UseChannelMutateFormParams) {
         if (!response.success) {
           throw createServerError(response, t(ERROR_MESSAGES.UPDATE_FAILED))
         }
-        return SUCCESS_MESSAGES.UPDATED
+        return { messageKey: SUCCESS_MESSAGES.UPDATED }
       }
 
       const payload = transformFormDataToCreatePayload(data)
@@ -109,10 +93,14 @@ export function useChannelMutateForm(props: UseChannelMutateFormParams) {
       if (!response.success) {
         throw createServerError(response, t(ERROR_MESSAGES.CREATE_FAILED))
       }
-      return SUCCESS_MESSAGES.CREATED
+      // A login plugin opens its login dialog on the new channel.
+      return {
+        messageKey: SUCCESS_MESSAGES.CREATED,
+        channelId: response.data?.ids?.[0],
+      }
     },
-    onSuccess: (messageKey) => {
-      toast.success(t(messageKey))
+    onSuccess: (result) => {
+      toast.success(t(result.messageKey))
       props.onSuccess()
     },
     onError: (error: unknown) => {

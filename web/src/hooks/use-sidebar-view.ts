@@ -1,27 +1,14 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { useLocation } from '@tanstack/react-router'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { resolveSidebarView } from '@/components/layout/lib/sidebar-view-registry'
-import type { NavGroup, ResolvedSidebarView } from '@/components/layout/types'
+import type {
+  NavGroup,
+  ResolvedSidebarView,
+  SidebarBadges,
+} from '@/components/layout/types'
+import { useModelPricingIssueBadge } from '@/features/system-settings/models/pricing-issues'
 import { ROLE } from '@/lib/roles'
 import { useAuthStore } from '@/stores/auth-store'
 
@@ -48,7 +35,9 @@ export function useSidebarView(): ResolvedSidebarView {
   const { t } = useTranslation()
   const pathname = useLocation({ select: (l) => l.pathname })
   const userRole = useAuthStore((s) => s.auth.user?.role)
-  const rootSidebarData = useSidebarData()
+  const modelPricingBadge = useModelPricingIssueBadge()
+  const badges: SidebarBadges = { modelPricing: modelPricingBadge }
+  const rootSidebarData = useSidebarData(badges)
   const configFilteredRoot = useSidebarConfig(rootSidebarData.navGroups)
 
   const rootNavGroups = useMemo<NavGroup[]>(() => {
@@ -70,7 +59,7 @@ export function useSidebarView(): ResolvedSidebarView {
     return {
       key: view.id,
       view,
-      navGroups: view.getNavGroups(t),
+      navGroups: view.getNavGroups(t, badges),
     }
   }
 

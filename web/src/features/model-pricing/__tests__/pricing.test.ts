@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { describe, expect, it } from 'vitest'
 
 import { buildPricingChanges, type ModelPricingConfig } from '../api'
@@ -141,6 +123,21 @@ describe('shared model pricing', () => {
         pricingFromDraft({ name: 'example', billingMode: 'per-request', price })
       ).toThrow()
     }
+  })
+
+  it('reads expression drafts from the form fields over loaded option keys', () => {
+    const options = pricingOptions({
+      'billing_setting.billing_mode': '{}',
+      'billing_setting.billing_expr': '{}',
+      BillingMode: '{"example":"tiered_expr"}',
+      BillingExpr: '{"example":"tier(\\"base\\", p * 2)"}',
+    })
+    expect(JSON.parse(options['billing_setting.billing_expr'])).toEqual({
+      example: 'tier("base", p * 2)',
+    })
+    expect(JSON.parse(options['billing_setting.billing_mode'])).toEqual({
+      example: 'tiered_expr',
+    })
   })
 })
 

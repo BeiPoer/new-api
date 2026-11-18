@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import {
   Activity,
   Box,
@@ -37,10 +19,11 @@ import {
   Users,
   Wallet,
   Newspaper,
+  Workflow,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import type { SidebarData } from '@/components/layout/types'
+import type { SidebarBadges, SidebarData } from '@/components/layout/types'
 import { ROLE } from '@/lib/roles'
 
 /**
@@ -49,7 +32,7 @@ import { ROLE } from '@/lib/roles'
  * These are shown when the URL does not match any nested sidebar view
  * registered in `layout/lib/sidebar-view-registry.ts`.
  */
-export function useSidebarData(): SidebarData {
+export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
   const { t } = useTranslation()
 
   return {
@@ -171,9 +154,15 @@ export function useSidebarData(): SidebarData {
             requiredRole: ROLE.ADMIN,
           },
           {
-            title: t('Task Plugins'),
+            title: t('Plugins'),
             url: '/task-plugins',
             icon: PlugZap,
+            requiredRole: ROLE.SUPER_ADMIN,
+          },
+          {
+            title: t('Request processing'),
+            url: '/request-processing',
+            icon: Workflow,
             requiredRole: ROLE.SUPER_ADMIN,
           },
           {
@@ -181,6 +170,9 @@ export function useSidebarData(): SidebarData {
             url: '/system-settings/site',
             activeUrls: ['/system-settings'],
             icon: Settings,
+            requiredRole: ROLE.SUPER_ADMIN,
+            // Model pricing lives in System Settings.
+            badge: badges.modelPricing,
           },
         ],
       },

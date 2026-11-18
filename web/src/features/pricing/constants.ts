@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { type TFunction } from 'i18next'
 
 import type { TokenUnit } from './types'
@@ -27,8 +9,12 @@ import type { TokenUnit } from './types'
 /** Sort options for pricing models */
 export const SORT_OPTIONS = {
   NAME: 'name',
-  PRICE_LOW: 'price-low',
-  PRICE_HIGH: 'price-high',
+  INPUT_PRICE_LOW: 'input-price-low',
+  INPUT_PRICE_HIGH: 'input-price-high',
+  OUTPUT_PRICE_LOW: 'output-price-low',
+  OUTPUT_PRICE_HIGH: 'output-price-high',
+  REQUEST_PRICE_LOW: 'request-price-low',
+  REQUEST_PRICE_HIGH: 'request-price-high',
 } as const
 
 export type SortOption = (typeof SORT_OPTIONS)[keyof typeof SORT_OPTIONS]
@@ -36,8 +22,12 @@ export type SortOption = (typeof SORT_OPTIONS)[keyof typeof SORT_OPTIONS]
 export function getSortLabels(t: TFunction): Record<SortOption, string> {
   return {
     [SORT_OPTIONS.NAME]: t('Name'),
-    [SORT_OPTIONS.PRICE_LOW]: t('Price: Low to High'),
-    [SORT_OPTIONS.PRICE_HIGH]: t('Price: High to Low'),
+    [SORT_OPTIONS.INPUT_PRICE_LOW]: t('Input Price: Low to High'),
+    [SORT_OPTIONS.INPUT_PRICE_HIGH]: t('Input Price: High to Low'),
+    [SORT_OPTIONS.OUTPUT_PRICE_LOW]: t('Output Price: Low to High'),
+    [SORT_OPTIONS.OUTPUT_PRICE_HIGH]: t('Output Price: High to Low'),
+    [SORT_OPTIONS.REQUEST_PRICE_LOW]: t('Per-request Price: Low to High'),
+    [SORT_OPTIONS.REQUEST_PRICE_HIGH]: t('Per-request Price: High to Low'),
   }
 }
 

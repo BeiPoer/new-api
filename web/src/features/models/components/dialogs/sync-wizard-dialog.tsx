@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -201,6 +183,17 @@ export function SyncWizardDialog(props: {
   const hiddenSelectedCount = selected.filter(
     (item) => !visibleNames.has(item.model_name)
   ).length
+  const selectedExistingModels = selected.filter(
+    (item) => item.kind === 'update'
+  )
+  const changedFieldCount = selectedExistingModels.reduce(
+    (total, item) => total + item.fields.length,
+    0
+  )
+  const selectedFieldCount = selectedExistingModels.reduce(
+    (total, item) => total + selection[item.model_name].length,
+    0
+  )
   const updates: MetadataSyncSelection[] = selected
     .filter(
       (item) => item.kind === 'create' || selection[item.model_name].length > 0
@@ -260,6 +253,16 @@ export function SyncWizardDialog(props: {
         ? [...previous[name], field]
         : previous[name].filter((value) => value !== field),
     }))
+  const chooseAllFields = (checked: boolean) =>
+    setSelection((previous) => {
+      const next = { ...previous }
+      for (const item of selectedExistingModels) {
+        next[item.model_name] = checked
+          ? item.fields.map((field) => field.field)
+          : []
+      }
+      return next
+    })
   const impact = (field: MetadataSyncField) => {
     if (field === 'name_rule') {
       return t(
@@ -635,11 +638,50 @@ export function SyncWizardDialog(props: {
       )}
       {step === 1 && (
         <div className='space-y-5'>
-          <p className='text-muted-foreground text-sm'>
-            {t(
-              'New records include the fields below. Existing fields are kept unless explicitly selected.'
+          <div className='space-y-3'>
+            {selected.some((item) => item.kind === 'create') && (
+              <p className='text-muted-foreground text-sm'>
+                {t(
+                  'New models: all metadata shown below will be imported automatically. No selection is needed.'
+                )}
+              </p>
             )}
-          </p>
+            {changedFieldCount > 0 && (
+              <>
+                <p className='text-muted-foreground text-sm'>
+                  {t(
+                    'Existing models: select fields to replace their current values with the values on the right. Unselected fields stay unchanged.'
+                  )}
+                </p>
+                <div className='flex flex-wrap items-center gap-2'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    className='h-auto min-h-7 max-w-full py-1.5 whitespace-normal'
+                    disabled={busy || selectedFieldCount === changedFieldCount}
+                    onClick={() => chooseAllFields(true)}
+                  >
+                    {t('Select all changed fields')}
+                  </Button>
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    className='h-auto min-h-7 max-w-full py-1.5 whitespace-normal'
+                    disabled={busy || selectedFieldCount === 0}
+                    onClick={() => chooseAllFields(false)}
+                  >
+                    {t('Clear field selection')}
+                  </Button>
+                  <p className='text-muted-foreground text-xs' role='status'>
+                    {t('{{selected}} of {{total}} changed fields selected', {
+                      selected: selectedFieldCount,
+                      total: changedFieldCount,
+                    })}
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
           {selected.map((item) => (
             <section key={item.model_name} className='space-y-2'>
               <h3 className='font-mono text-sm font-semibold break-all'>

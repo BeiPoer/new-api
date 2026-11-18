@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import * as React from 'react'
 import type { SetStateAction } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -26,6 +8,7 @@ import { Combobox } from '@/components/ui/combobox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { getPaymentErrorTranslation } from '@/features/wallet/lib/payment'
 import { handleServerError } from '@/lib/handle-server-error'
 
 import { removeTrailingSlash } from './utils'
@@ -159,7 +142,9 @@ export function WaffoPancakeSettingsSection({
         ) {
           stores = (body.data as { stores: CatalogStore[] }).stores ?? []
         } else {
-          const reason = typeof body?.data === 'string' ? body.data : undefined
+          const reason =
+            getPaymentErrorTranslation(body) ??
+            (typeof body?.data === 'string' ? body.data : undefined)
           handleServerError(body, undefined, {
             title: reason
               ? `${t('Credentials verification failed')}: ${reason}`
@@ -323,6 +308,7 @@ export function WaffoPancakeSettingsSection({
       }
       const reason =
         errData?.error ??
+        getPaymentErrorTranslation(body) ??
         (typeof body?.data === 'string' ? body.data : undefined)
       handleServerError(body, undefined, {
         title: reason

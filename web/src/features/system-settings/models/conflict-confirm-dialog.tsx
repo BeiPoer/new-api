@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { useTranslation } from 'react-i18next'
 
 import { ConfirmDialog } from '@/components/confirm-dialog'
@@ -28,6 +10,8 @@ export type ConflictItem = {
   model: string
   current: string
   newVal: string
+  adjustment?: string
+  siteVal?: string
 }
 type ConflictConfirmDialogProps = {
   open: boolean
@@ -37,6 +21,7 @@ type ConflictConfirmDialogProps = {
   isLoading?: boolean
   error?: string
   onReload?: () => void
+  exchangeRateSummary?: string
 }
 export function ConflictConfirmDialog(props: ConflictConfirmDialogProps) {
   const { t } = useTranslation()
@@ -47,12 +32,17 @@ export function ConflictConfirmDialog(props: ConflictConfirmDialogProps) {
       onOpenChange={props.onOpenChange}
       title={t('Preview price changes')}
       desc={t('Review and confirm the selected prices.')}
-      className='max-h-[90vh] overflow-y-auto data-[size=default]:max-w-[calc(100%-2rem)] data-[size=default]:sm:max-w-4xl'
+      className='max-h-[min(90dvh,var(--dialog-available-height))] overflow-y-auto data-[size=default]:max-w-[calc(100%-2rem)] data-[size=default]:sm:max-w-4xl'
       confirmText={t('Confirm Changes')}
       isLoading={props.isLoading}
       handleConfirm={props.onConfirm}
       disabled={Boolean(props.error)}
     >
+      {props.exchangeRateSummary && (
+        <p className='text-muted-foreground text-sm'>
+          {props.exchangeRateSummary}
+        </p>
+      )}
       {props.error && (
         <ErrorState
           description={props.error}
@@ -91,11 +81,23 @@ export function ConflictConfirmDialog(props: ConflictConfirmDialogProps) {
           },
           {
             id: 'new',
-            header: t('Change To'),
+            header: t('Final saved price'),
             cell: (conflict) => (
-              <pre className='text-sm whitespace-pre-wrap'>
-                {conflict.newVal}
-              </pre>
+              <div className='space-y-2'>
+                {conflict.adjustment && (
+                  <p className='text-muted-foreground text-xs'>
+                    {conflict.adjustment}
+                  </p>
+                )}
+                <pre className='text-sm whitespace-pre-wrap'>
+                  {conflict.newVal}
+                </pre>
+                {conflict.siteVal && (
+                  <pre className='text-muted-foreground text-xs whitespace-pre-wrap'>
+                    {conflict.siteVal}
+                  </pre>
+                )}
+              </div>
             ),
           },
         ]}

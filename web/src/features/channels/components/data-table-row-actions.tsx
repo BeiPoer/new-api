@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { useQueryClient } from '@tanstack/react-query'
 import type { Row } from '@tanstack/react-table'
 import {
@@ -59,7 +41,10 @@ import {
 } from '@/lib/admin-permissions'
 import { useAuthStore } from '@/stores/auth-store'
 
-import { MODEL_FETCHABLE_TYPES } from '../constants'
+import {
+  useChannelBalanceQueryable,
+  useChannelModelFetchable,
+} from '../hooks/use-task-plugin-option'
 import {
   channelsQueryKeys,
   handleDeleteChannel,
@@ -68,7 +53,6 @@ import {
   isChannelEnabled,
   isMultiKeyChannel,
 } from '../lib'
-import { parseUpstreamUpdateMeta } from '../lib/upstream-update-utils'
 import type { Channel } from '../types'
 import { ChannelRowActionsLayoutContext } from './channel-row-actions-context'
 import { useChannels } from './channels-provider'
@@ -81,6 +65,8 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const { t } = useTranslation()
   const layout = useContext(ChannelRowActionsLayoutContext)
   const channel = row.original
+  const modelFetchable = useChannelModelFetchable(channel)
+  const balanceQueryable = useChannelBalanceQueryable(channel)
   const { setOpen, setCurrentRow, upstream } = useChannels()
   const queryClient = useQueryClient()
   const currentUser = useAuthStore((s) => s.auth.user)
@@ -282,12 +268,14 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           </DropdownMenuItem>
 
           {/* Query Balance */}
-          <DropdownMenuItem onClick={handleQueryBalance}>
-            {t('Query Balance')}
-            <DropdownMenuShortcut>
-              <DollarSign size={16} />
-            </DropdownMenuShortcut>
-          </DropdownMenuItem>
+          {balanceQueryable && (
+            <DropdownMenuItem onClick={handleQueryBalance}>
+              {t('Query Balance')}
+              <DropdownMenuShortcut>
+                <DollarSign size={16} />
+              </DropdownMenuShortcut>
+            </DropdownMenuItem>
+          )}
 
           {/* Fetch Models */}
           <DropdownMenuItem onClick={handleFetchModels}>
@@ -298,24 +286,9 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           </DropdownMenuItem>
 
           {/* Detect Upstream Updates (only for fetchable channel types) */}
-          {MODEL_FETCHABLE_TYPES.has(channel.type) && (
+          {modelFetchable && (
             <DropdownMenuItem
-              onClick={() => {
-                const meta = parseUpstreamUpdateMeta(channel.settings)
-                if (
-                  meta.pendingAddModels.length > 0 ||
-                  meta.pendingRemoveModels.length > 0
-                ) {
-                  upstream.openModal(
-                    channel,
-                    meta.pendingAddModels,
-                    meta.pendingRemoveModels,
-                    meta.pendingAddModels.length > 0 ? 'add' : 'remove'
-                  )
-                } else {
-                  upstream.detectChannelUpdates(channel)
-                }
-              }}
+              onClick={() => upstream.detectChannelUpdates(channel)}
             >
               {t('Upstream Updates')}
               <DropdownMenuShortcut>

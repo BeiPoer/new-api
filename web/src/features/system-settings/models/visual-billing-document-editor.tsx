@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { ChevronDown } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -50,6 +32,7 @@ import { TierPriceFields } from './tier-price-fields'
 import { VisualConditionTree } from './visual-condition-tree'
 
 type PricingNodeProps = {
+  imageCount?: boolean
   node: VisualPricingNode
   source: string
   currency: PricingCurrency
@@ -107,6 +90,7 @@ function PricingTierFields(
         </Button>
       </div>
       <TierPriceFields
+        imageCount={props.imageCount}
         currency={props.currency}
         billingUnit={node.billingUnit}
         fixedPrice={node.fixedPrice}
@@ -250,10 +234,13 @@ function PricingRuleCard(
               <span className='flex flex-wrap gap-x-4 gap-y-1 text-xs tabular-nums'>
                 {tier.billingUnit === 'request' ? (
                   <span>
-                    {t('Price per request')}:{' '}
+                    {props.imageCount
+                      ? t('Price per image')
+                      : t('Price per request')}
+                    :{' '}
                     {formatPricingAmount(tier.fixedPrice, props.currency) ||
                       '—'}
-                    /{t('request')}
+                    /{props.imageCount ? t('image') : t('request')}
                   </span>
                 ) : (
                   <>
@@ -390,6 +377,7 @@ export function VisualBillingDocumentEditor(props: {
         </p>
       )}
       <PricingRuleList
+        imageCount={props.document.imageCount}
         node={props.document.root}
         prefix=''
         source={props.document.source}

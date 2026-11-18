@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { zodResolver } from '@hookform/resolvers/zod'
 import { CalendarClock, CreditCard, RefreshCw, Settings2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -62,6 +44,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { Switch } from '@/components/ui/switch'
+import { getPaymentErrorTranslation } from '@/features/wallet/lib/payment'
 import { getCurrencyDisplay, getCurrencyLabel } from '@/lib/currency'
 import { handleServerError } from '@/lib/handle-server-error'
 
@@ -239,7 +222,9 @@ export function SubscriptionsMutateDrawer({
           `${t('Waffo Pancake product created')}: ${created.product_id}`
         )
       } else {
-        const reason = typeof res.data === 'string' ? res.data : undefined
+        const reason =
+          getPaymentErrorTranslation(res) ??
+          (typeof res.data === 'string' ? res.data : undefined)
         handleServerError(res.data, undefined, {
           title: reason
             ? `${t('Waffo Pancake product creation failed')}: ${reason}`

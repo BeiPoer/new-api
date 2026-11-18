@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 /**
  * Billing expression parsing utilities.
  *
@@ -121,6 +103,15 @@ export const BILLING_VARS: BillingVar[] = [
     group: 'cache',
   },
   {
+    key: 'cc12h',
+    field: 'cacheCreate12hPrice',
+    tierField: 'cache_create_12h_unit_cost',
+    label: 'Cache create (12h) price',
+    shortLabel: 'Cache Write (12h)',
+    side: 'input',
+    group: 'cache',
+  },
+  {
     key: 'img',
     field: 'imagePrice',
     tierField: 'image_unit_cost',
@@ -180,6 +171,10 @@ export const BILLING_CACHE_VAR_MAP = BILLING_EXTRA_VARS.map((v) => ({
   field: v.tierField as string,
   exprVar: v.key,
 }))
+
+/** Long-lived cache writes cost a fixed multiple of the `cc` write price. */
+export const CLAUDE_CACHE_CREATION_1H_MULTIPLIER = 6 / 3.75
+export const OPENAI_CACHE_CREATION_12H_MULTIPLIER = 2
 
 // ---------------------------------------------------------------------------
 // Request rule constants
@@ -273,6 +268,7 @@ export type TaskTierCondition = {
 }
 
 export type ParsedTaskTier = {
+  conditionText?: string
   label: string
   conditions: TaskTierCondition[]
   constant: number

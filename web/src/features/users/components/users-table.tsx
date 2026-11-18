@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
 import type { OnChangeFn, SortingState } from '@tanstack/react-table'
@@ -30,9 +12,12 @@ import {
 } from '@/components/data-table'
 import { useMediaQuery } from '@/hooks'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
-import { createServerError } from '@/lib/server-error-message'
+import {
+  createServerError,
+  requireServerSuccess,
+} from '@/lib/server-error-message'
 
-import { getUsers, searchUsers } from '../api'
+import { getGroups, getUsers, searchUsers } from '../api'
 import {
   USER_STATUS,
   getUserStatusOptions,
@@ -82,7 +67,7 @@ export function UsersTable() {
     columnFilters: [
       { columnId: 'status', searchKey: 'status', type: 'array' },
       { columnId: 'role', searchKey: 'role', type: 'array' },
-      { columnId: 'group', searchKey: 'group', type: 'string' },
+      { columnId: 'group', searchKey: 'group', type: 'array' },
     ],
   })
   const statusFilter =
@@ -94,8 +79,15 @@ export function UsersTable() {
       | string[]
       | undefined) ?? []
   const groupFilter =
-    (columnFilters.find((filter) => filter.id === 'group')?.value as string) ??
-    ''
+    (columnFilters.find((filter) => filter.id === 'group')?.value as
+      | string[]
+      | undefined) ?? []
+
+  const { data: groupsData } = useQuery({
+    queryKey: ['groups'],
+    queryFn: async () => requireServerSuccess(await getGroups()),
+    staleTime: 5 * 60 * 1000,
+  })
 
   const sortParams = useMemo(() => {
     const activeSort = sorting[0]
@@ -135,7 +127,9 @@ export function UsersTable() {
     queryFn: async () => {
       const hasFilter = globalFilter?.trim()
       const hasColumnFilter =
-        statusFilter.length > 0 || roleFilter.length > 0 || Boolean(groupFilter)
+        statusFilter.length > 0 ||
+        roleFilter.length > 0 ||
+        groupFilter.length > 0
       const params = {
         p: pagination.pageIndex + 1,
         page_size: pagination.pageSize,
@@ -149,7 +143,7 @@ export function UsersTable() {
               keyword: globalFilter,
               status: statusFilter[0] ?? '',
               role: roleFilter[0] ?? '',
-              group: groupFilter,
+              group: groupFilter[0] ?? '',
             })
           : await getUsers(params)
 
@@ -229,6 +223,15 @@ export function UsersTable() {
             columnId: 'role',
             title: t('Role'),
             options: getUserRoleOptions(t),
+            singleSelect: true,
+          },
+          {
+            columnId: 'group',
+            title: t('User Group'),
+            options: (groupsData?.data ?? []).map((group) => ({
+              label: group,
+              value: group,
+            })),
             singleSelect: true,
           },
         ],

@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { Link2 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -32,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { TitledCard } from '@/components/ui/titled-card'
 import { useProfile } from '@/features/profile/hooks/use-profile'
 
-import { AccessTokenCard } from './components/access-token-card'
+import { AccessTokensCard } from './components/access-tokens-card'
 import { AccountActionCard } from './components/account-action-card'
 import { AccountBindings } from './components/account-bindings'
 import { LoginSessionsCard } from './components/login-sessions-card'
@@ -105,7 +87,7 @@ export function Security() {
               {t('Sessions & Access')}
             </h3>
             <LoginSessionsCard />
-            <AccessTokenCard />
+            <AccessTokensCard />
           </section>
           <section aria-labelledby='security-account' className='space-y-4'>
             <h3 id='security-account' className='text-sm font-semibold'>

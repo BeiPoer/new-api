@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { flattenBinary } from './display'
 import { compileBillingExpression } from './parser'
 import {
@@ -57,7 +39,11 @@ export type VisualPricingNode =
       yes: VisualPricingNode
       no: VisualPricingNode
     })
-export type VisualBillingDocument = { source: string; root: VisualPricingNode }
+export type VisualBillingDocument = {
+  source: string
+  root: VisualPricingNode
+  imageCount?: boolean
+}
 export type VisualBillingIssue = { id: string; message: string }
 export type VisualBillingSerialization =
   | { ok: true; source: string }
@@ -201,14 +187,26 @@ function readVisualPricing(node: ExpressionNode): VisualPricingNode | null {
   }
 }
 
+function imageCountPricingRoot(node: ExpressionNode): ExpressionNode | null {
+  if (node.kind !== 'binary' || node.operator !== '*') return null
+  if (node.right.kind === 'variable' && node.right.name === 'image_count') {
+    return node.left
+  }
+  if (node.left.kind === 'variable' && node.left.name === 'image_count') {
+    return node.right
+  }
+  return null
+}
+
 export function parseVisualBillingDocument(
   source: string
 ): VisualBillingDocument | null {
   const compiled = compileBillingExpression(source)
   if (compiled.status !== 'ready') return null
-  const root = readVisualPricing(compiled.ast)
+  const pricing = imageCountPricingRoot(compiled.ast) ?? compiled.ast
+  const root = readVisualPricing(pricing)
   if (!root) return null
-  const document = { source, root }
+  const document = { source, root, imageCount: pricing !== compiled.ast }
   return serializeVisualBillingDocument(document).ok ? document : null
 }
 
@@ -465,7 +463,14 @@ export function serializeVisualBillingDocument(
   document: VisualBillingDocument
 ): VisualBillingSerialization {
   const issues: VisualBillingIssue[] = []
-  const body = writeVisualPricing(document.root, document.source, issues)
+  let body = writeVisualPricing(document.root, document.source, issues)
+  if (
+    document.imageCount &&
+    document.root.kind === 'branch' &&
+    document.root.origin?.kind !== 'conditional'
+  ) {
+    body = `(${body})`
+  }
   if (issues.length > 0) return { ok: false, issues }
   const original = compileBillingExpression(document.source)
   if (original.status !== 'ready') {
@@ -480,10 +485,25 @@ export function serializeVisualBillingDocument(
       ],
     }
   }
+  const pricingOrigin = document.imageCount
+    ? imageCountPricingRoot(original.ast)
+    : original.ast
+  if (!pricingOrigin) {
+    return {
+      ok: false,
+      issues: [
+        {
+          id: document.root.id,
+          message:
+            'This expression cannot be edited visually without losing information.',
+        },
+      ],
+    }
+  }
   const source =
-    document.source.slice(0, original.ast.start) +
+    document.source.slice(0, pricingOrigin.start) +
     body +
-    document.source.slice(original.ast.end)
+    document.source.slice(pricingOrigin.end)
   if (compileBillingExpression(source).status !== 'ready') {
     return {
       ok: false,

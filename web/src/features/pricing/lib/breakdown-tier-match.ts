@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import {
   normalizeTierLabel,
   type ParsedTaskTier,
@@ -61,6 +43,25 @@ export function isBreakdownTierMatched(
     matchedTierLabel ?? undefined
   )
   if (tierMatchesNormalizedLabel(tier, normalizedMatchedTierLabel)) {
+    if (
+      'unitPrices' in tier &&
+      tiers.filter((candidate) =>
+        tierMatchesNormalizedLabel(candidate, normalizedMatchedTierLabel)
+      ).length > 1
+    ) {
+      // Expanded rows can share one engine label. Time-dependent rows cannot
+      // be resolved from usage alone; never substitute the current wall clock.
+      return (
+        !tier.conditionText &&
+        Boolean(usageFacts) &&
+        tier.conditions.length > 0 &&
+        tier.conditions.every(
+          (condition) =>
+            'field' in condition &&
+            String(usageFacts?.[condition.field]) === condition.value
+        )
+      )
+    }
     return true
   }
   if (
@@ -70,7 +71,11 @@ export function isBreakdownTierMatched(
   ) {
     return false
   }
-  if (!usageFacts || tier.conditions.length === 0) {
+  if (
+    !usageFacts ||
+    tier.conditions.length === 0 ||
+    ('unitPrices' in tier && tier.conditionText)
+  ) {
     return false
   }
   return tier.conditions.every((condition) => {

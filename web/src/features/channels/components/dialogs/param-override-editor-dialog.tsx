@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import {
   ChevronDown,
   ChevronUp,
@@ -85,6 +67,7 @@ type ParamOverrideOperation = {
   keep_origin: boolean
   logic: string
   conditions: ParamOverrideCondition[]
+  prune_draft: PruneObjectsDraft | null
 }
 
 export type ParamOverrideEditorDialogProps = {
@@ -140,6 +123,7 @@ const CONDITION_MODE_OPTIONS = [
   { label: 'Prefix', value: 'prefix' },
   { label: 'Suffix', value: 'suffix' },
   { label: 'Contains', value: 'contains' },
+  { label: 'Regex', value: 'regex' },
   { label: 'Greater Than', value: 'gt' },
   { label: 'Greater Than or Equal', value: 'gte' },
   { label: 'Less Than', value: 'lt' },
@@ -473,6 +457,14 @@ const parseLooseValue = (valueText: string): unknown => {
   }
 }
 
+const parseConditionValue = (
+  condition: Pick<ParamOverrideCondition, 'mode' | 'value_text'>
+): unknown => {
+  // Regex patterns are literal strings, even when they look like JSON values.
+  if (condition.mode === 'regex') return condition.value_text
+  return parseLooseValue(condition.value_text)
+}
+
 const verifyJSON = (text: string): boolean => {
   try {
     JSON.parse(text)
@@ -509,6 +501,10 @@ const normalizeOperation = (
     ? (operation.mode as string)
     : 'set',
   value_text: toValueText(operation.value),
+  prune_draft:
+    operation.mode === 'prune_objects'
+      ? parsePruneObjectsDraft(toValueText(operation.value))
+      : null,
   keep_origin: operation.keep_origin === true,
   from: typeof operation.from === 'string' ? operation.from : '',
   to: typeof operation.to === 'string' ? operation.to : '',
@@ -762,14 +758,7 @@ const buildReturnErrorValueText = (
 
 // prune_objects helpers
 
-type PruneRule = {
-  id: string
-  path: string
-  mode: string
-  value_text: string
-  invert: boolean
-  pass_missing_key: boolean
-}
+type PruneRule = ParamOverrideCondition
 
 type PruneObjectsDraft = {
   simpleMode: boolean
@@ -778,17 +767,6 @@ type PruneObjectsDraft = {
   recursive: boolean
   rules: PruneRule[]
 }
-
-const normalizePruneRule = (rule: Record<string, unknown> = {}): PruneRule => ({
-  id: nextLocalId(),
-  path: typeof rule.path === 'string' ? rule.path : '',
-  mode: CONDITION_MODE_VALUES.has(rule.mode as string)
-    ? (rule.mode as string)
-    : 'full',
-  value_text: toValueText(rule.value),
-  invert: rule.invert === true,
-  pass_missing_key: rule.pass_missing_key === true,
-})
 
 const parsePruneObjectsDraft = (valueText: string): PruneObjectsDraft => {
   const defaults: PruneObjectsDraft = {
@@ -815,13 +793,13 @@ const parsePruneObjectsDraft = (valueText: string): PruneObjectsDraft => {
         for (const [path, value] of Object.entries(
           parsed.where as Record<string, unknown>
         )) {
-          rules.push(normalizePruneRule({ path, mode: 'full', value }))
+          rules.push(normalizeCondition({ path, mode: 'full', value }))
         }
       }
       if (Array.isArray(parsed.conditions)) {
         for (const item of parsed.conditions) {
           if (item && typeof item === 'object') {
-            rules.push(normalizePruneRule(item))
+            rules.push(normalizeCondition(item))
           }
         }
       } else if (
@@ -832,7 +810,7 @@ const parsePruneObjectsDraft = (valueText: string): PruneObjectsDraft => {
         for (const [path, value] of Object.entries(
           parsed.conditions as Record<string, unknown>
         )) {
-          rules.push(normalizePruneRule({ path, mode: 'full', value }))
+          rules.push(normalizeCondition({ path, mode: 'full', value }))
         }
       }
       const typeText =
@@ -874,8 +852,9 @@ const buildPruneObjectsValueText = (draft: PruneObjectsDraft): string => {
         path: String(rule.path || '').trim(),
         mode: CONDITION_MODE_VALUES.has(rule.mode) ? rule.mode : 'full',
       }
-      const valueRaw = String(rule.value_text || '').trim()
-      if (valueRaw !== '') conditionPayload.value = parseLooseValue(valueRaw)
+      if (rule.mode === 'regex' || rule.value_text.trim() !== '') {
+        conditionPayload.value = parseConditionValue(rule)
+      }
       if (rule.invert) conditionPayload.invert = true
       if (rule.pass_missing_key) conditionPayload.pass_missing_key = true
       return conditionPayload
@@ -922,7 +901,7 @@ const buildConditionPayload = (
   const payload: Record<string, unknown> = {
     path,
     mode: condition.mode || 'full',
-    value: parseLooseValue(condition.value_text),
+    value: parseConditionValue(condition),
   }
   if (condition.invert) payload.invert = true
   if (condition.pass_missing_key) payload.pass_missing_key = true
@@ -982,7 +961,18 @@ const validateOperations = (
 
     if (mode === 'prune_objects') {
       const raw = op.value_text.trim()
-      if (!raw) {
+      const draft = op.prune_draft
+      const hasDraftCondition =
+        draft &&
+        (draft.typeText.trim() ||
+          (!draft.simpleMode && draft.rules.some((rule) => rule.path.trim())))
+      const parsed = parseLooseValue(raw)
+      // Imported object rules can explicitly match an empty type string.
+      const hasExplicitType =
+        parsed !== null &&
+        typeof parsed === 'object' &&
+        Object.hasOwn(parsed, 'type')
+      if (!raw || (draft && !hasDraftCondition && !hasExplicitType)) {
         return t('Rule {{line}} prune_objects is missing conditions', { line })
       }
     }
@@ -1248,12 +1238,7 @@ export function ParamOverrideEditorDialog(
     return parseReturnErrorDraft(selectedOperation.value_text)
   }, [selectedOperation])
 
-  const pruneObjectsDraft = useMemo(() => {
-    if (!selectedOperation || selectedOperation.mode !== 'prune_objects') {
-      return null
-    }
-    return parsePruneObjectsDraft(selectedOperation.value_text)
-  }, [selectedOperation])
+  const pruneObjectsDraft = selectedOperation?.prune_draft ?? null
 
   const topOperationModes = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -1273,7 +1258,17 @@ export function ParamOverrideEditorDialog(
   const updateOperation = useCallback(
     (operationId: string, patch: Partial<ParamOverrideOperation>) => {
       setOperations((prev) =>
-        prev.map((o) => (o.id === operationId ? { ...o, ...patch } : o))
+        prev.map((op) => {
+          if (op.id !== operationId) return op
+          const next = { ...op, ...patch }
+          if (next.mode !== op.mode || patch.value_text !== undefined) {
+            next.prune_draft =
+              next.mode === 'prune_objects'
+                ? parsePruneObjectsDraft(next.value_text)
+                : null
+          }
+          return next
+        })
       )
     },
     []
@@ -1303,11 +1298,20 @@ export function ParamOverrideEditorDialog(
         conditions: source.conditions.map((c) => ({
           path: c.path,
           mode: c.mode,
-          value: parseLooseValue(c.value_text),
+          value: parseConditionValue(c),
           invert: c.invert,
           pass_missing_key: c.pass_missing_key,
         })),
       })
+      if (source.prune_draft) {
+        cloned.prune_draft = {
+          ...source.prune_draft,
+          rules: source.prune_draft.rules.map((rule) => ({
+            ...rule,
+            id: nextLocalId(),
+          })),
+        }
+      }
       insertedId = cloned.id
       const next = [...prev]
       next.splice(idx + 1, 0, cloned)
@@ -1403,13 +1407,17 @@ export function ParamOverrideEditorDialog(
       setOperations((prev) =>
         prev.map((op) => {
           if (op.id !== operationId) return op
-          const draft = parsePruneObjectsDraft(op.value_text)
+          const draft = op.prune_draft
+          if (!draft) return op
           const nextDraft =
             typeof updater === 'function'
               ? updater(draft)
               : { ...draft, ...updater }
           return {
             ...op,
+            // Keep unfinished rows and their IDs in local state. The serialized
+            // value is only the valid payload, never the source of the next edit.
+            prune_draft: nextDraft,
             value_text: buildPruneObjectsValueText(nextDraft),
           }
         })
@@ -1423,7 +1431,7 @@ export function ParamOverrideEditorDialog(
       updatePruneObjectsDraft(operationId, (draft) => ({
         ...draft,
         simpleMode: false,
-        rules: [...draft.rules, normalizePruneRule({})],
+        rules: [...draft.rules, createDefaultCondition()],
       }))
     },
     [updatePruneObjectsDraft]
@@ -1747,7 +1755,7 @@ export function ParamOverrideEditorDialog(
       description={t(
         'Create request parameter override rules with a visual editor or raw JSON.'
       )}
-      contentClassName='flex max-h-[90vh] flex-col gap-0 p-0 sm:max-w-5xl'
+      contentClassName='flex max-h-[min(90dvh,var(--dialog-available-height))] flex-col gap-0 p-0 sm:max-w-5xl'
       headerClassName='border-b px-6 py-4'
       footerClassName='border-t px-6 py-4'
       contentHeight='min(72vh, 720px)'
@@ -2563,6 +2571,7 @@ function ConditionEditor(conditionEditorProps: ConditionEditorProps) {
                   {t('Match Mode')}
                 </label>
                 <Combobox
+                  aria-label={t('Match Mode')}
                   options={CONDITION_MODE_OPTIONS.map((o) => ({
                     value: o.value,
                     label: t(o.label),
@@ -2584,6 +2593,7 @@ function ConditionEditor(conditionEditorProps: ConditionEditorProps) {
                   {t('Match Value')}
                 </label>
                 <Input
+                  aria-label={t('Match Value')}
                   value={condition.value_text}
                   onChange={(e) =>
                     conditionEditorProps.updateCondition(
@@ -2592,7 +2602,7 @@ function ConditionEditor(conditionEditorProps: ConditionEditorProps) {
                       { value_text: e.target.value }
                     )
                   }
-                  placeholder='gpt'
+                  placeholder={condition.mode === 'regex' ? '^gpt-' : 'gpt'}
                   className='h-8 text-xs'
                 />
               </div>
@@ -3069,6 +3079,7 @@ function PruneObjectsEditor(pruneObjectsEditorProps: PruneObjectsEditorProps) {
                           {t('Match Mode')}
                         </label>
                         <Combobox
+                          aria-label={t('Match Mode')}
                           options={CONDITION_MODE_OPTIONS.map((o) => ({
                             value: o.value,
                             label: t(o.label),
@@ -3090,6 +3101,7 @@ function PruneObjectsEditor(pruneObjectsEditorProps: PruneObjectsEditorProps) {
                           {t('Match Value (optional)')}
                         </label>
                         <Input
+                          aria-label={t('Match Value (optional)')}
                           value={rule.value_text}
                           onChange={(e) =>
                             pruneObjectsEditorProps.updateRule(

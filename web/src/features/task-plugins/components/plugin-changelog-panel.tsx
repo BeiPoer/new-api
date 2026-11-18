@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { useQuery } from '@tanstack/react-query'
 import { ExternalLink, History } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -26,7 +8,12 @@ import { LoadingState } from '@/components/loading-state'
 import { Markdown } from '@/components/ui/markdown'
 
 import { findMarketplaceVersion } from '../lib/marketplace'
-import { changelogLocale, fetchPluginChangelog } from '../lib/plugin-changelog'
+import { fetchPluginChangelog } from '../lib/plugin-changelog'
+import {
+  documentLocale,
+  PluginDocumentFormatError,
+} from '../lib/plugin-document'
+import { describePluginDocumentProblem } from '../lib/plugin-document-problem'
 import type { MarketplacePlugin } from '../types'
 
 type PluginChangelogPanelProps = {
@@ -37,7 +24,7 @@ type PluginChangelogPanelProps = {
 
 export function PluginChangelogPanel(props: PluginChangelogPanelProps) {
   const { t, i18n } = useTranslation()
-  const locale = changelogLocale(i18n.language)
+  const locale = documentLocale(i18n.language)
   const entry = findMarketplaceVersion(props.plugin, props.version)
   const query = useQuery({
     queryKey: [
@@ -45,8 +32,8 @@ export function PluginChangelogPanel(props: PluginChangelogPanelProps) {
       props.indexUrl,
       props.plugin.key,
       props.version,
-      entry?.path,
-      entry?.sha256,
+      entry?.changelog?.path ?? entry?.path,
+      entry?.changelog ? entry.changelog.sha256 : entry?.sha256,
       locale,
     ],
     queryFn: ({ signal }) =>
@@ -57,14 +44,31 @@ export function PluginChangelogPanel(props: PluginChangelogPanelProps) {
   })
 
   if (query.isPending) return <LoadingState />
+  if (query.error instanceof PluginDocumentFormatError && !query.data) {
+    return (
+      <ErrorState
+        className='min-h-48'
+        title={t('Could not show the changelog')}
+        description={describePluginDocumentProblem(t, query.error)}
+        action={
+          <a
+            href={query.error.sourceUrl}
+            target='_blank'
+            rel='noopener noreferrer'
+            className='text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-xs'
+          >
+            <ExternalLink className='size-3.5' aria-hidden='true' />
+            {t('View changelog source')}
+          </a>
+        }
+      />
+    )
+  }
   if (query.isError && !query.data) {
     return (
       <ErrorState
         className='min-h-48'
         title={t('Could not load the changelog')}
-        description={t(
-          'The changelog could not be fetched or parsed. Please try again.'
-        )}
         onRetry={() => void query.refetch()}
       />
     )

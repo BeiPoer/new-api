@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   getCoreRowModel,
@@ -108,7 +90,6 @@ it('shows model mismatch evidence when tapping the mobile model badge', async ()
             requested_model: longName,
             upstream_model: 'mapped-model',
             returned_model: 'unexpected-model',
-            mismatch: true,
           },
         }),
       },
@@ -166,7 +147,6 @@ it.each([false, true])(
                   requested_model: longName,
                   upstream_model: longName,
                   returned_model: longName,
-                  mismatch: false,
                 },
               })
             : log.other,
@@ -174,9 +154,16 @@ it.each([false, true])(
       ],
     })
     const button = screen.getByRole('button', { name: `Model: ${longName}` })
-    expect(within(button).getByText(longName)).toHaveClass(
+    const modelText = within(button).getByText(longName)
+    expect(modelText).toHaveClass(
       'line-clamp-2',
+      'leading-5',
       '[overflow-wrap:anywhere]'
+    )
+    expect(modelText.closest('[data-slot="status-badge"]')).toHaveClass(
+      'max-w-full',
+      'min-h-6',
+      'py-px'
     )
     button.focus()
     await user.keyboard('{Enter}')
@@ -281,6 +268,21 @@ it('omits unused token and throughput placeholders for async jobs', () => {
     .getByRole('button', { name: /^Time:/ })
     .closest('[data-slot="log-time-and-timing"]')
   expect(within(timing as HTMLElement).queryByText('—')).not.toBeInTheDocument()
+})
+
+it('labels a task whose result was returned in the response as synchronous', () => {
+  renderLogs({
+    logs: [
+      {
+        ...log,
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        other: JSON.stringify({ is_task: true, task_sync: true }),
+      },
+    ],
+  })
+  expect(screen.getByText('Sync')).toBeVisible()
+  expect(screen.queryByText('Async')).not.toBeInTheDocument()
 })
 
 it('shows mapped model names in full when inspecting a mobile model badge', async () => {

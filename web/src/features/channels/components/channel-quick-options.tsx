@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { type ReactNode, useId } from 'react'
 import { type UseFormReturn, useFormContext, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -38,6 +20,10 @@ import type { PassthroughKind } from './dialogs/passthrough-warning-dialog'
 
 type ChannelQuickOptionsProps = {
   channelType: number
+  /** Overrides the channel type rule, e.g. for a plugin with relay routes. */
+  modelFetchable?: boolean
+  /** Overrides the channel type rule, e.g. for a plugin that can serve it. */
+  responsesWebsocket?: boolean
   sensitiveLocked: boolean
   disabled: boolean
   /**
@@ -152,7 +138,7 @@ export function ChannelQuickOptions(props: ChannelQuickOptionsProps) {
       }),
     disabled: props.disabled,
   })
-  if (MODEL_FETCHABLE_TYPES.has(props.channelType)) {
+  if (props.modelFetchable ?? MODEL_FETCHABLE_TYPES.has(props.channelType)) {
     options.push({
       key: 'model-check',
       label: t('Detect model updates'),
@@ -163,7 +149,10 @@ export function ChannelQuickOptions(props: ChannelQuickOptionsProps) {
       disabled: sensitiveDisabled,
     })
   }
-  if (supportsResponsesWebSocket(props.channelType)) {
+  if (
+    props.responsesWebsocket ??
+    supportsResponsesWebSocket(props.channelType)
+  ) {
     options.push({
       key: 'websocket',
       label: t('Responses WebSocket'),

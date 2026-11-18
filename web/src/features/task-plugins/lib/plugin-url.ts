@@ -1,27 +1,11 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
+import { fetchFromPluginSite } from './plugin-site'
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 /**
  * Backend limit for a single plugin source (`maxTaskPluginSourceBytes` in
  * controller/task_plugin.go). Enforced client-side too so an oversized fetch
  * fails with a readable message instead of a server rejection.
  */
-export const MAX_PLUGIN_SOURCE_BYTES = 1024 * 1024
+export const MAX_PLUGIN_SOURCE_BYTES = 8 * 1024 * 1024
 
 export function pluginSourceByteLength(source: string): number {
   return new TextEncoder().encode(source).length
@@ -90,15 +74,17 @@ export class PluginSourceFetchError extends Error {
 /**
  * Fetches plugin source in the browser. Every marketplace and URL-import fetch
  * goes through here: the gateway never makes the outbound request, so there is
- * no server-side SSRF surface.
+ * no server-side SSRF surface. The request always revalidates with the host:
+ * versioned sources are often served as immutable, and a file republished in
+ * place would otherwise be read from a stale cache and fail the index sha256.
  */
 export async function fetchPluginSourceText(
   url: string,
-  fetchImpl: typeof fetch = globalThis.fetch
+  fetchImpl: typeof fetch = fetchFromPluginSite
 ): Promise<string> {
   let response: Response
   try {
-    response = await fetchImpl(url)
+    response = await fetchImpl(url, { cache: 'no-cache' })
   } catch {
     throw new PluginSourceFetchError('unreachable')
   }

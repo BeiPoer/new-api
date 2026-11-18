@@ -1,23 +1,5 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { ChevronDown, RotateCcw } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { memo, useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
@@ -37,8 +19,7 @@ import {
   getEndpointTypeLabels,
   getQuotaTypeLabels,
 } from '../constants'
-import { hasTaskUsageSchema } from '../lib/dynamic-price'
-import { parseTags } from '../lib/filters'
+import { getModelQuotaType, parseTags } from '../lib/filters'
 import type { PricingModel, PricingVendor } from '../types'
 
 type FilterOption = {
@@ -75,13 +56,6 @@ export interface PricingSidebarProps {
   hasActiveFilters: boolean
   onClearFilters: () => void
   className?: string
-}
-
-function countBy(
-  models: PricingModel[],
-  predicate: (model: PricingModel) => boolean
-): number {
-  return models.reduce((count, model) => count + (predicate(model) ? 1 : 0), 0)
 }
 
 function formatGroupRatio(ratio: number | undefined): string | undefined {
@@ -155,8 +129,35 @@ function FilterSection(props: FilterSectionProps) {
   )
 }
 
-export function PricingSidebar(props: PricingSidebarProps) {
+export const PricingSidebar = memo(function PricingSidebar(
+  props: PricingSidebarProps
+) {
   const { t } = useTranslation()
+  const counts = useMemo(() => {
+    const vendors = new Map<string, number>()
+    const tags = new Map<string, number>()
+    const endpoints = new Map<string, number>()
+    const quotas = { token: 0, request: 0, task: 0 }
+    for (const model of props.models) {
+      if (model.vendor_name) {
+        vendors.set(
+          model.vendor_name,
+          (vendors.get(model.vendor_name) ?? 0) + 1
+        )
+      }
+      for (const tag of new Set(
+        parseTags(model.tags).map((tag) => tag.toLowerCase())
+      )) {
+        tags.set(tag, (tags.get(tag) ?? 0) + 1)
+      }
+      for (const endpoint of new Set(model.supported_endpoint_types ?? [])) {
+        endpoints.set(endpoint, (endpoints.get(endpoint) ?? 0) + 1)
+      }
+      const quotaType = getModelQuotaType(model)
+      if (quotaType) quotas[quotaType]++
+    }
+    return { vendors, tags, endpoints, quotas }
+  }, [props.models])
   const quotaTypeLabels = getQuotaTypeLabels(t)
   const endpointTypeLabels = getEndpointTypeLabels(t)
 
@@ -170,10 +171,7 @@ export function PricingSidebar(props: PricingSidebarProps) {
       .map((vendor) => ({
         value: vendor.name,
         label: vendor.name,
-        count: countBy(
-          props.models,
-          (model) => model.vendor_name === vendor.name
-        ),
+        count: counts.vendors.get(vendor.name) ?? 0,
         icon: vendor.icon ? getLobeIcon(vendor.icon, 14) : undefined,
       }))
       .filter((vendor) => vendor.count > 0),
@@ -200,23 +198,17 @@ export function PricingSidebar(props: PricingSidebarProps) {
     {
       value: QUOTA_TYPES.TOKEN,
       label: quotaTypeLabels[QUOTA_TYPES.TOKEN],
-      count: countBy(
-        props.models,
-        (model) => model.quota_type === 0 && !hasTaskUsageSchema(model)
-      ),
+      count: counts.quotas.token,
     },
     {
       value: QUOTA_TYPES.REQUEST,
       label: quotaTypeLabels[QUOTA_TYPES.REQUEST],
-      count: countBy(
-        props.models,
-        (model) => model.quota_type === 1 && !hasTaskUsageSchema(model)
-      ),
+      count: counts.quotas.request,
     },
     {
       value: QUOTA_TYPES.TASK,
       label: quotaTypeLabels[QUOTA_TYPES.TASK],
-      count: countBy(props.models, (model) => hasTaskUsageSchema(model)),
+      count: counts.quotas.task,
     },
   ]
 
@@ -229,11 +221,7 @@ export function PricingSidebar(props: PricingSidebarProps) {
     ...props.tags.map((tag) => ({
       value: tag,
       label: tag,
-      count: countBy(props.models, (model) =>
-        parseTags(model.tags)
-          .map((item) => item.toLowerCase())
-          .includes(tag.toLowerCase())
-      ),
+      count: counts.tags.get(tag.toLowerCase()) ?? 0,
     })),
   ]
 
@@ -248,10 +236,7 @@ export function PricingSidebar(props: PricingSidebarProps) {
       .map(([value, label]) => ({
         value,
         label,
-        count: countBy(
-          props.models,
-          (model) => model.supported_endpoint_types?.includes(value) ?? false
-        ),
+        count: counts.endpoints.get(value) ?? 0,
       })),
   ]
 
@@ -317,4 +302,4 @@ export function PricingSidebar(props: PricingSidebarProps) {
       </div>
     </aside>
   )
-}
+})

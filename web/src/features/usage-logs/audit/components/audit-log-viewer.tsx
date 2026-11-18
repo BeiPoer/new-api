@@ -1,21 +1,3 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
 import { useQuery } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { useEffect, useState } from 'react'
@@ -37,12 +19,15 @@ export function AuditLogViewer(props: {
   scope: 'all' | 'self'
   accessOnly?: boolean
   currentTokenRef?: string
+  // The token scope the viewer opens with and returns to on reset.
+  defaultTokenScope?: 'all' | 'current'
   onAccessDenied?: () => Promise<void>
 }) {
   const { t } = useTranslation()
   const userId = useAuthStore((state) => state.auth.user?.id)
   const [filters, setFilters] = useState<AuditFilters>({ p: 1, page_size: 20 })
-  const [tokenScope, setTokenScope] = useState('all')
+  const defaultTokenScope = props.defaultTokenScope ?? 'all'
+  const [tokenScope, setTokenScope] = useState<string>(defaultTokenScope)
   const params = { ...filters }
   if (props.accessOnly) params.category = 'access_token'
   if (tokenScope === 'current') params.token_ref = props.currentTokenRef
@@ -130,6 +115,7 @@ export function AuditLogViewer(props: {
               scope={props.scope}
               accessOnly={props.accessOnly}
               tokenScope={tokenScope}
+              defaultTokenScope={defaultTokenScope}
               currentTokenRef={props.currentTokenRef}
               onTokenScopeChange={(value) => {
                 setTokenScope(value)
@@ -140,7 +126,7 @@ export function AuditLogViewer(props: {
                 if (!invalidRange && canQuery) void query.refetch()
               }}
               onReset={() => {
-                setTokenScope('all')
+                setTokenScope(defaultTokenScope)
                 setFilters({ p: 1, page_size: filters.page_size })
               }}
             />
